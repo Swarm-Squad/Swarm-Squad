@@ -12,6 +12,7 @@ VALID_TYPES = [
     "build",
     "ci",
     "chore",
+    "revert",
 ]
 
 TEMPLATE = """
@@ -26,7 +27,7 @@ Available commit message types:
     - `build`: Changes that affect the build system or external dependencies (example scopes: pip, docker, npm)
     - `ci`: Changes to CI configuration files and scripts (example scopes: GitLabCI)
     - `chore`: General maintenance tasks, dependency updates, etc.
-
+    - `revert`: Reverts a previous commit.
 Invalid commit message format!
 Commit message must follow the format:
     git commit -m "<type>: <description>"

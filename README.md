@@ -97,7 +97,7 @@
    OLLAMA_API_URL=http://localhost:11434
    ```
    - You can get a Mapbox access token by signing up at https://www.mapbox.com/
-   - Update the OLLAMA_API_URL if your Ollama instance is running on a different address
+   - Update the `OLLAMA_API_URL` if your Ollama instance is running on a different address
 
 2. **Install ruff and pre-commit:**
    ```bash
@@ -119,6 +119,7 @@
 4. **Code Linting:**
    ```bash
    ruff check
+   ruff check --select I --fix
    ruff format
    ```
 
