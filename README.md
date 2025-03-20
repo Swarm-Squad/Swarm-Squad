@@ -99,11 +99,12 @@
    - You can get a Mapbox access token by signing up at https://www.mapbox.com/
    - Update the OLLAMA_API_URL if your Ollama instance is running on a different address
 
-2. **Install pre-commit:**
+2. **Install ruff and pre-commit:**
    ```bash
-   uv pip install pre-commit
+   uv pip install ruff pre-commit
    ```
-   Pre-commit helps maintain code quality by running automated checks before commits are made.
+   - `ruff` is a super fast Python linter and formatter.
+   - `pre-commit` helps maintain code quality by running automated checks before commits are made.
 
 3. **Install git hooks:**
    ```bash
