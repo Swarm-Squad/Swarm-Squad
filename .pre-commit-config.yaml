@@ -5,10 +5,14 @@ repos:
     - id: ruff
       args: [--fix]
       name: ruff (check and fix)
+      always_run: true
     - id: ruff
       args: [--select=I, --fix]
       name: ruff (import sorting)
+      always_run: true
     - id: ruff-format
+      name: ruff (format)
+      always_run: true
 
 - repo: local
   hooks:
@@ -17,3 +21,4 @@ repos:
       entry: python .pre-commit_msg_template.py
       language: python
       stages: [commit-msg]
+      always_run: true

@@ -1,11 +1,12 @@
 import os
+
 from dotenv import load_dotenv
 
 
 def read_map_html():
     # Load environment variables from .env file
     load_dotenv()
-    
+
     mapbox_token = os.getenv("MAPBOX_ACCESS_TOKEN")
     if mapbox_token is None:
         raise ValueError(

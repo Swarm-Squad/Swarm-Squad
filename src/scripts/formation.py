@@ -699,7 +699,7 @@ for iter in range(max_iter):
     if len(Jn) > 19 and len(set(Jn[-20:])) == 1:
         if not Jn_converged:
             print(
-                f"Formation completed: Jn values has converged in {round(t_elapsed[-1], 2)} seconds {iter-20} iterations."
+                f"Formation completed: Jn values has converged in {round(t_elapsed[-1], 2)} seconds {iter - 20} iterations."
             )
             Jn_converged = True
             break
