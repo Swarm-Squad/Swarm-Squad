@@ -119,6 +119,8 @@
 4. **Code Linting:**
    ```bash
    ruff check
+   ruff check --fix
+   ruff check --select I
    ruff check --select I --fix
    ruff format
    ```
