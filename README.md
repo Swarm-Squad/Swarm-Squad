@@ -56,7 +56,7 @@
    curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
 
-   ```bash
+   ```powershell
    # Windows
    powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
    ```
@@ -72,7 +72,7 @@
    source .venv/bin/activate
    ```
 
-   ```bash
+   ```powershell
    # Windows
    .venv\Scripts\activate
    ```
