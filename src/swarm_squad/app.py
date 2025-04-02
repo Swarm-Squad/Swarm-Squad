@@ -1,5 +1,7 @@
 import atexit
 import os
+import signal
+import sys
 
 import dash
 import dash_mantine_components as dmc
@@ -13,6 +15,19 @@ from swarm_squad.utils.websocket_manager import WebSocketManager
 # Initialize WebSocket manager outside the app
 # This ensures it's only initialized once, even if the app reloads in debug mode
 ws_manager = WebSocketManager()
+
+
+# Define a signal handler to ensure cleanup
+def signal_handler(sig, frame):
+    print(f"[INFO] Signal {sig} received, cleaning up resources...")
+    if hasattr(app, "ws_manager"):
+        app.ws_manager.cleanup_websocket(force=True)
+    sys.exit(0)
+
+
+# Register the signal handlers
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
 
 app = Dash(
     __name__,
@@ -54,6 +69,7 @@ CORS(
 # Start the websocket server
 # Only start if this is the main process, not a reloader process
 if not os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+    # Start the websocket server - port checking is handled within start_websocket
     app.ws_manager.start_websocket()
 
 # Make sure the WebSocket server is cleaned up when the app exits

@@ -1,7 +1,9 @@
 import asyncio
 import atexit
 import os
+import signal
 import socket
+import subprocess
 import threading
 import time
 
@@ -23,16 +25,34 @@ class WebSocketManager:
         if not hasattr(self, "initialized"):
             self.initialized = True
             atexit.register(self.cleanup_websocket)
+
+            # Register signal handlers for cleaner shutdown
+            signal.signal(signal.SIGINT, self._signal_handler)
+            signal.signal(signal.SIGTERM, self._signal_handler)
+
             self._server = DroneWebsocketServer()
 
+    def _signal_handler(self, sig, frame):
+        """Handle termination signals"""
+        print(f"[INFO] Received signal {sig}, shutting down...")
+        self.cleanup_websocket(force=True)
+        # Continue with default signal handling
+        signal.default_int_handler(sig, frame)
+
     def is_port_in_use(self, port, host="localhost"):
-        """Check if the port is already in use"""
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            try:
-                s.bind((host, port))
-                return False
-            except socket.error:
-                return True
+        """Check if the port is already in use using the same method as force_release_port"""
+        # Use connect_ex as a more reliable way to check if port is in use
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(1)
+        result = sock.connect_ex((host, port))
+        sock.close()
+
+        if result == 0:
+            # Connection succeeded, port is in use
+            return True
+        else:
+            # Connection failed, port is free
+            return False
 
     def is_websocket_running(self):
         """Check if the websocket server is running"""
@@ -47,13 +67,28 @@ class WebSocketManager:
             return
 
         # Check if port is already in use
-        if self.is_port_in_use(8051):
-            print(
-                "[INFO] Port 8051 is already in use, assuming WebSocket server is running"
-            )
-            self._is_running = True
-            return
+        port_status = self.is_port_in_use(8051)
 
+        if port_status:
+            print("[INFO] Port 8051 is in use, attempting to release it")
+            release_success = self.force_release_port(8051)
+
+            if not release_success:
+                print(
+                    "[ERROR] Failed to release port 8051, websocket server will not start"
+                )
+                return
+
+            # Double-check port status after release attempt
+            if self.is_port_in_use(8051):
+                print(
+                    "[ERROR] Port 8051 is still in use after release attempt, websocket server will not start"
+                )
+                return
+        else:
+            print("[INFO] Port 8051 is available for use")
+
+        # At this point, we've verified the port is free
         self._is_running = True
 
         # Create and start thread for websocket server
@@ -103,16 +138,79 @@ class WebSocketManager:
         sock.close()
 
         if result == 0:  # Port is in use
+            print(
+                f"[DEBUG] Port {port} is confirmed to be in use (connect_ex returned 0)"
+            )
             try:
-                # Try to kill the process using the port (Linux only)
+                # Try multiple methods to kill the process using the port (Linux only)
                 try:
-                    os.system(f"fuser -k {port}/tcp >/dev/null 2>&1")
-                    print(f"[INFO] Killed process using port {port}")
+                    # First try fuser (commonly available)
+                    try:
+                        print(
+                            f"[INFO] Attempting to kill process using port {port} with fuser"
+                        )
+                        os.system(f"fuser -k {port}/tcp >/dev/null 2>&1")
+                    except Exception:
+                        pass
+
+                    # Try lsof as an alternative
+                    try:
+                        print(
+                            f"[INFO] Attempting to find and kill process using port {port} with lsof"
+                        )
+                        process = subprocess.run(
+                            ["lsof", "-i", f":{port}", "-t"],
+                            capture_output=True,
+                            text=True,
+                        )
+                        if process.stdout.strip():
+                            for pid in process.stdout.strip().split("\n"):
+                                if pid:
+                                    os.system(f"kill -9 {pid} >/dev/null 2>&1")
+                                    print(
+                                        f"[INFO] Killed process {pid} using port {port}"
+                                    )
+                    except Exception:
+                        pass
+
+                    # Try netstat as another alternative
+                    try:
+                        print(
+                            f"[INFO] Attempting to find and kill process using port {port} with netstat"
+                        )
+                        process = subprocess.run(
+                            ["netstat", "-tlnp"], capture_output=True, text=True
+                        )
+                        for line in process.stdout.split("\n"):
+                            if f":{port}" in line and "LISTEN" in line:
+                                parts = line.split()
+                                for part in parts:
+                                    if "/" in part:
+                                        pid = part.split("/")[0]
+                                        os.system(f"kill -9 {pid} >/dev/null 2>&1")
+                                        print(
+                                            f"[INFO] Killed process {pid} using port {port}"
+                                        )
+                    except Exception:
+                        pass
+
                 except Exception as e:
-                    print(f"[ERROR] Could not kill process using port {port}: {e}")
+                    print(f"[WARNING] Could not kill process using port {port}: {e}")
 
                 # Wait a moment to allow the port to be released
-                time.sleep(0.5)
+                time.sleep(1)
+
+                # Check again if the port is in use
+                check_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                check_sock.settimeout(1)
+                check_result = check_sock.connect_ex((host, port))
+                check_sock.close()
+
+                if check_result == 0:
+                    print(f"[WARNING] Port {port} is still in use after kill attempts")
+                else:
+                    print(f"[INFO] Successfully released port {port}")
+                    return True
 
                 # Create a socket with SO_REUSEADDR and SO_REUSEPORT if available
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -121,17 +219,25 @@ class WebSocketManager:
                 try:
                     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
                 except (AttributeError, OSError) as e:
-                    print(f"[ERROR] Could not set SO_REUSEPORT: {e}")
+                    print(f"[WARNING] Could not set SO_REUSEPORT: {e}")
 
                 try:
                     s.bind((host, port))
                     s.close()
-                    print(f"[INFO] Successfully released port {port}")
-                except socket.error:
                     print(
-                        f"[INFO] Port {port} is still in use but will be released when app exits"
+                        f"[INFO] Successfully bound to port {port}, it should now be released"
                     )
+                    return True
+                except socket.error as e:
+                    print(
+                        f"[WARNING] Port {port} is still in use and could not be released: {e}"
+                    )
+                    return False
             except Exception as e:
                 print(f"[ERROR] Could not release port {port}: {e}")
+                return False
         else:
-            print(f"[INFO] Port {port} is not in use")
+            print(
+                f"[DEBUG] Port {port} is confirmed to be free (connect_ex returned {result})"
+            )
+            return True

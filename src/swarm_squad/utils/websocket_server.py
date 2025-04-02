@@ -19,6 +19,7 @@ class DroneWebsocketServer:
         self.cache_ttl = 0.1  # 100ms cache TTL
         self.stop_event = asyncio.Event()
         self.server = None
+        self._tasks = []
 
     @lru_cache(maxsize=1)
     def get_drone_data(self, timestamp):
@@ -87,7 +88,32 @@ class DroneWebsocketServer:
 
     def stop(self):
         """Stop the websocket server"""
+        print("[INFO] Stopping WebSocket server...")
         self.stop_event.set()
+
+        # Close all connected clients
+        if self.connected_clients:
+            print(f"[INFO] Closing {len(self.connected_clients)} client connections...")
+            loop = asyncio.get_event_loop_policy().get_event_loop()
+            if loop.is_running():
+                for client in list(self.connected_clients):
+                    try:
+                        loop.create_task(
+                            client.close(code=1001, reason="Server shutting down")
+                        )
+                    except Exception as e:
+                        print(f"[ERROR] Error closing client connection: {e}")
+            else:
+                print(
+                    "[WARNING] Event loop not running, cannot close client connections gracefully"
+                )
+
+        # Cancel any pending tasks
+        for task in self._tasks:
+            if not task.done():
+                task.cancel()
+
+        # Close the server
         if self.server:
             self.server.close()
 
@@ -110,15 +136,35 @@ class DroneWebsocketServer:
                 f"\n\n[INFO] WebSocket server running at ws://{self.host}:{self.port}"
             )
 
-            await self.broadcast_drone_data()
+            # Create a task for the broadcast loop
+            broadcast_task = asyncio.create_task(self.broadcast_drone_data())
+            self._tasks.append(broadcast_task)
+
+            # Wait until stop event is set
+            await self.stop_event.wait()
 
         except Exception as e:
             print(f"[ERROR] WebSocket server error: {e}")
         finally:
             self.stop_event.set()
+
+            # Cancel all tasks
+            for task in self._tasks:
+                if not task.done():
+                    task.cancel()
+
+            # Close all connections
+            for client in list(self.connected_clients):
+                try:
+                    await client.close(code=1001, reason="Server shutting down")
+                except Exception as e:
+                    print(f"[ERROR] Error closing client connection: {e}")
+
+            # Close server
             if self.server:
                 self.server.close()
                 await self.server.wait_closed()
+                print("[INFO] WebSocket server closed")
 
     def run(self):
         try:
