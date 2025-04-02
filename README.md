@@ -177,6 +177,5 @@ swarm-squad --help
  ┣ 📄LICENSE                     // MIT License
  ┣ 📄README.md                   // Project documentation
  ┣ 📄pyproject.toml              // Project configuration
- ┣ 📄requirements.txt            // Project dependencies
  ┗ 📄uv.lock                     // Lock file
 ```
