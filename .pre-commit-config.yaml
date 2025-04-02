@@ -1,4 +1,20 @@
 repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v5.0.0
+  hooks:
+    - id: end-of-file-fixer
+      name: 'end-of-file-fixer'
+      pass_filenames: false
+      always_run: true
+    - id: trailing-whitespace
+      name: 'trailing-whitespace'
+      pass_filenames: false
+      always_run: true
+    - id: fix-byte-order-marker
+      name: 'fix-byte-order-marker'
+      pass_filenames: false
+      always_run: true
+
 - repo: https://github.com/astral-sh/ruff-pre-commit
   rev: 'v0.11.0'
   hooks:

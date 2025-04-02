@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Map | Swarm Squad</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
+    <link rel="icon" href="../assets/favicon.ico" type="image/x-icon">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <script src="https://cdn.jsdelivr.net/gh/jscastro76/threebox@v.2.2.7/dist/threebox.min.js"
+        type="text/javascript"></script>
+    <link href="https://cdn.jsdelivr.net/gh/jscastro76/threebox@v.2.2.7/dist/threebox.css" rel="stylesheet" />
+    <div id="map"></div>
+    <script>
+        mapboxgl.accessToken = 'YOUR_MAPBOX_TOKEN_PLACEHOLDER';
+
+        var origin = [-81.049, 29.189, 50];
+
+        // Add this before map initialization
+        mapboxgl.prewarm();
+
+        // Configure WebGL context attributes
+        const contextOptions = {
+            antialias: true,
+            alpha: false,
+            preserveDrawingBuffer: false,
+            powerPreference: 'high-performance'
+        };
+        
+        // Declare drones at a higher scope
+        let drones = {};
+        let websocket = null;
+        
+        // Add connection status indicator
+        const connectionStatus = document.createElement('div');
+        connectionStatus.style.position = 'absolute';
+        connectionStatus.style.top = '10px';
+        connectionStatus.style.left = '10px';
+        connectionStatus.style.padding = '5px';
+        connectionStatus.style.borderRadius = '5px';
+        connectionStatus.style.backgroundColor = '#e06c75';
+        connectionStatus.style.color = 'white';
+        connectionStatus.style.fontFamily = 'Arial, sans-serif';
+        connectionStatus.style.fontSize = '14px';
+        connectionStatus.style.zIndex = '1000';
+        connectionStatus.textContent = 'WebSocket: Connecting...';
+        document.body.appendChild(connectionStatus);
+        
+        // Initialize WebSocket connection immediately
+        const connectWebSocket = () => {
+            console.log('[INFO] Attempting to connect to WebSocket server...');
+            const ws = new WebSocket('ws://localhost:8051');
+
+            ws.onopen = () => {
+                console.log('[INFO] WebSocket connected');
+                connectionStatus.textContent = 'WebSocket: Connected';
+                connectionStatus.style.backgroundColor = '#98c379';
+            };
+
+            ws.onclose = () => {
+                console.log('[INFO] WebSocket disconnected. Reconnecting...');
+                connectionStatus.textContent = 'WebSocket: Disconnected';
+                connectionStatus.style.backgroundColor = '#e06c75';
+                setTimeout(connectWebSocket, 1000); // Reconnect after 1 second
+            };
+
+            ws.onerror = (error) => {
+                console.error('[ERROR] WebSocket error:', error);
+                connectionStatus.textContent = 'WebSocket: Error';
+                connectionStatus.style.backgroundColor = '#e06c75';
+            };
+
+            ws.onmessage = function (event) {
+                try {
+                    console.log('[DEBUG] Received WebSocket message:', event.data.slice(0, 200) + '...');
+                    const data = JSON.parse(event.data);
+                    let newDrones = {};
+                    let newCoords = data.droneCoords;
+                    let droneNames = data.droneNames;
+                    let dronePitch = data.dronePitch;
+                    let droneYaw = data.droneYaw;
+                    let droneRoll = data.droneRoll;
+
+                    console.log('[DEBUG] Processing drones:', {
+                        droneCount: newCoords.length,
+                        firstDroneCoords: newCoords[0],
+                        firstDroneName: droneNames[0]
+                    });
+
+                    if (window.tb) { // Only process if threebox is initialized
+                        for (let i = 0; i < newCoords.length; i++) {
+                            let name = droneNames[i];
+                            let coords = newCoords[i][0].split(',').map(Number);
+                            console.log(`[DEBUG] Processing drone ${name}:`, coords);
+
+                            if (drones[name]) {
+                                // Update existing drone with lerp
+                                const drone = drones[name];
+                                const currentPos = drone.coordinates;
+
+                                // Store target position and rotation
+                                drone.targetCoords = coords;
+                                drone.targetRotation = {
+                                    x: dronePitch[i][0],
+                                    y: droneYaw[i][0],
+                                    z: droneRoll[i][0]
+                                };
+
+                                // Store current rotation for interpolation
+                                if (!drone.currentRotation) {
+                                    drone.currentRotation = {
+                                        x: dronePitch[i][0],
+                                        y: droneYaw[i][0],
+                                        z: droneRoll[i][0]
+                                    };
+                                }
+
+                                newDrones[name] = drone;
+                            } else if (window.tb) {
+                                // Add new drone
+                                var options = {
+                                    obj: '../assets/models/drone.glb',
+                                    type: 'gltf',
+                                    scale: 0.5,
+                                    units: 'meters',
+                                    rotation: { x: dronePitch[i][0], y: droneYaw[i][0], z: droneRoll[i][0] }
+                                };
+
+                                window.tb.loadObj(options, function (model) {
+                                    let drone = model.setCoords(coords);
+                                    drone.name = name;
+                                    drone.addTooltip(` ${name}<br>
+                                    (${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}, ${coords[2].toFixed(1)})<br>
+                                    P:${dronePitch[i][0].toFixed(1)}° Y:${droneYaw[i][0].toFixed(1)}° R:${droneRoll[i][0].toFixed(1)}°
+                                    `, true);
+
+                                    if (model.animations && model.animations.length > 0) {
+                                        drone.mixer = new THREE.AnimationMixer(model);
+                                        model.animations.forEach((animation) => {
+                                            let action = drone.mixer.clipAction(animation);
+                                            action.play();
+                                        });
+                                        drone.lastUpdate = Date.now();
+                                    }
+
+                                    window.tb.add(drone);
+                                    newDrones[name] = drone;
+                                });
+                            }
+                        }
+
+                        // Remove drones that no longer exist
+                        for (let name in drones) {
+                            if (!newDrones[name] && window.tb) {
+                                window.tb.remove(drones[name]);
+                            }
+                        }
+
+                        // Update the outer drones reference
+                        drones = newDrones;
+                    }
+                } catch (error) {
+                    console.error('Error processing message:', error);
+                }
+            };
+
+            return ws;
+        };
+
+        // Start connecting to WebSocket immediately
+        websocket = connectWebSocket();
+
+        // Initialize a map
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/standard',
+            center: origin,
+            pitch: 70,
+            bearing: 0,
+            zoom: 16.5,
+            antialias: true,
+            webGLContextAttributes: contextOptions,  // Add WebGL context options
+            trackResize: true,
+            collectResourceTiming: false,
+            enableEventLogging: false,  // Disable Mapbox events logging
+            crossSourceCollisions: false
+        });
+
+        // Add full screen controls to the map.
+        map.addControl(new mapboxgl.FullscreenControl());
+        // Add zoom and rotation controls to the map.
+        map.addControl(new mapboxgl.NavigationControl());
+
+        // Add geolocate control to the map.
+        map.addControl(new mapboxgl.GeolocateControl({
+            positionOptions: {
+                enableHighAccuracy: true
+            },
+            trackUserLocation: true
+        }));
+
+        // Add a drone to the map.
+        map.on('style.load', function () {
+            map.addSource('mapbox-dem', {
+                'type': 'raster-dem',
+                'url': 'mapbox://mapbox.terrain-rgb'
+            });
+
+            map.setTerrain({
+                'source': 'mapbox-dem',
+                'exaggeration': 1.5
+            });
+
+            map.addLayer({
+                id: 'custom_layer',
+                type: 'custom',
+                renderingMode: '3d',
+                onAdd: function (map, mbxContext) {
+                    window.tb = new Threebox(
+                        map,
+                        mbxContext,
+                        {
+                            defaultLights: true,
+                            enableSelectingFeatures: true,
+                            enableSelectingObjects: true,
+                            enableDraggingObjects: true,
+                            enableRotatingObjects: true,
+                            enableTooltips: true
+                        }
+                    );
+                },
+                render: function (gl, matrix) {
+                    // Update animations
+                    const now = Date.now();
+                    Object.values(drones).forEach(drone => {
+                        if (drone.mixer) {
+                            const delta = (now - (drone.lastUpdate || now)) / 1000;
+                            drone.mixer.update(delta);
+                            drone.lastUpdate = now;
+                        }
+
+                        // Smooth position and rotation updates
+                        if (drone.targetCoords && drone.coordinates) {
+                            // Interpolation factor (adjust this value to control smoothing)
+                            const lerpFactor = 0.1;
+
+                            // Interpolate position
+                            const newCoords = [
+                                drone.coordinates[0] + (drone.targetCoords[0] - drone.coordinates[0]) * lerpFactor,
+                                drone.coordinates[1] + (drone.targetCoords[1] - drone.coordinates[1]) * lerpFactor,
+                                drone.coordinates[2] + (drone.targetCoords[2] - drone.coordinates[2]) * lerpFactor
+                            ];
+                            drone.setCoords(newCoords);
+
+                            // Interpolate rotation
+                            if (drone.targetRotation && drone.currentRotation) {
+                                const newRotation = {
+                                    x: drone.currentRotation.x + (drone.targetRotation.x - drone.currentRotation.x) * lerpFactor,
+                                    y: drone.currentRotation.y + (drone.targetRotation.y - drone.currentRotation.y) * lerpFactor,
+                                    z: drone.currentRotation.z + (drone.targetRotation.z - drone.currentRotation.z) * lerpFactor
+                                };
+                                drone.setRotation(newRotation);
+                                drone.currentRotation = newRotation;
+                            }
+                        }
+                    });
+                    if (window.tb) {
+                        window.tb.update();
+                    }
+                }
+            });
+        })
+    </script>
+</body>
+
+</html>
