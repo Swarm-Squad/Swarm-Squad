@@ -3,9 +3,15 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Define paths
+# Define paths for various locations to look for .env files
 PROJECT_ROOT = Path(__file__).resolve().parents[3]  # 3 levels up from this file
-ENV_FILE = PROJECT_ROOT / ".env"
+CURRENT_DIR = Path.cwd()  # Current working directory when command is run
+HOME_DIR = Path.home()  # User's home directory
+ENV_SEARCH_PATHS = [
+    CURRENT_DIR / ".env",  # First check current directory
+    HOME_DIR / ".env",  # Then check home directory
+    PROJECT_ROOT / ".env",  # Finally check project root (for development)
+]
 MAP_COMPONENT_PATH = (
     Path(__file__).resolve().parent.parent / "components" / "map_component.html"
 )
@@ -13,14 +19,14 @@ MAP_COMPONENT_PATH = (
 
 def load_mapbox_token():
     """Load Mapbox access token from .env file"""
-    # Try to load environment from project root first
-    if ENV_FILE.exists():
-        load_dotenv(ENV_FILE)
-        print(f"[INFO] Loaded environment from {ENV_FILE}")
+    # Try each possible .env location in order
+    for env_path in ENV_SEARCH_PATHS:
+        if env_path.exists():
+            load_dotenv(env_path)
+            print(f"[INFO] Loaded environment from {env_path}")
+            break
     else:
-        # Fallback to default dotenv behavior
-        load_dotenv()
-        print("[INFO] No .env file found at project root, using default environment")
+        print("[ERROR] No .env file found!")
 
     # Get the token from environment
     return os.getenv("MAPBOX_ACCESS_TOKEN")
@@ -36,6 +42,8 @@ def get_error_html(message):
             <p>{message}</p>
             <p>Get a free token at <a href="https://account.mapbox.com/access-tokens/" 
                style="color: #3498db;" target="_blank">Mapbox</a></p>
+            <p>Create a .env file in your current directory with:</p>
+            <pre style="text-align: left; background: #222; padding: 10px; border-radius: 5px;">MAPBOX_ACCESS_TOKEN=your_token_here</pre>
         </div>
     </div>
     """
