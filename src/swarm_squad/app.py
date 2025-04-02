@@ -93,7 +93,8 @@ def toggle_content_blur(modal_opened):
     return ""
 
 
-if __name__ == "__main__":
+# Add a main function to serve as the entry point
+def main():
     try:
         app.run(debug=True)
     except Exception as e:
@@ -101,3 +102,8 @@ if __name__ == "__main__":
     finally:
         # Force cleanup the WebSocket server
         app.ws_manager.cleanup_websocket(force=True)
+    return 0
+
+
+if __name__ == "__main__":
+    main()
