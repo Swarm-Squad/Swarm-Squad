@@ -44,6 +44,28 @@
   <h2>🚀 Getting Started</h2>
 </div>
 
+Get [uv](https://docs.astral.sh/uv/getting-started/installation/) and create a virtual environment.
+
+```bash
+uv venv --python 3.10
+source .venv/bin/activate
+uv pip install swarm-squad
+```
+
+To run the application, simply type:
+
+```bash
+swarm-squad
+# or
+swarm-squad --help
+```
+
+---
+
+<div align="center">
+  <h2>👨‍💻 Development Setup</h2>
+</div>
+
 1. **Clone the repository and navigate to project folder:**
    ```bash
    git clone https://github.com/Sang-Buster/Swarm-Squad
@@ -79,14 +101,10 @@
 
 5. **Install the required packages:**
    ```bash
-   uv pip install -r requirements.txt
+   uv pip install -e .
    ```
 
-<div align="center">
-  <h2>👨‍💻 Development Setup</h2>
-</div>
-
-1. **Set up environment variables:**
+6. **Set up environment variables:**
    ```bash
    # Copy the example environment file
    cp .env_example .env
@@ -99,14 +117,14 @@
    - You can get a Mapbox access token by signing up at https://www.mapbox.com/
    - Update the `OLLAMA_API_URL` if your Ollama instance is running on a different address
 
-2. **Install ruff and pre-commit:**
+7. **Install ruff and pre-commit:**
    ```bash
    uv pip install ruff pre-commit
    ```
    - `ruff` is a super fast Python linter and formatter.
    - `pre-commit` helps maintain code quality by running automated checks before commits are made.
 
-3. **Install git hooks:**
+8. **Install git hooks:**
    ```bash
    pre-commit install --hook-type commit-msg --hook-type pre-commit --hook-type pre-push
    ```
@@ -116,7 +134,7 @@
    - `pre-commit`: Runs Ruff linting and formatting checks before each commit
    - `pre-push`: Performs final validation before pushing to remote
   
-4. **Code Linting:**
+9. **Code Linting:**
    ```bash
    ruff check
    ruff check --fix
@@ -125,9 +143,9 @@
    ruff format
    ```
 
-5. **Run the application:**
+10. **Run the application:**
    ```bash
-   python src/app.py
+   uv run src/swarm_squad/app.py
    ```
 
 ---
@@ -137,20 +155,28 @@
 </div>
 
 ```text
-📦Swarm Squad
+📂Swarm Squad
  ┣ 📂src                         // Source Code
- ┃ ┣ 📂assets                       // Static assets (CSS, images, favicon, etc.)
- ┃ ┣ 📂components                   // Reusable UI components
- ┃ ┣ 📂data                         // Database files
- ┃ ┣ 📂pages                        // Page components and routing
- ┃ ┣ 📂scripts                      // Simulation and algorithm scripts
- ┃ ┣ 📂util                         // Utility functions and helpers
- ┃ ┗ 📄app.py                       // Main Dash application entry point
+ ┃ ┗ 📦swarm_squad                  // 
+ ┃ ┃ ┣ 📂assets                     // Static assets (CSS, images, favicon, etc.)
+ ┃ ┃ ┃ ┣ 📂css                      // CSS files
+ ┃ ┃ ┃ ┣ 📂js                       // JavaScript files
+ ┃ ┃ ┃ ┣ 📂models                   // Model files
+ ┃ ┃ ┃ ┗ 📄favicon.ico              // Favicon
+ ┃ ┃ ┣ 📂components                 // Reusable UI components
+ ┃ ┃ ┣ 📂data                       // Database files
+ ┃ ┃ ┣ 📂pages                      // Page components and routing
+ ┃ ┃ ┣ 📂scripts                    // Simulation and algorithm scripts
+ ┃ ┃ ┣ 📂utils                      // Utility functions and helpers
+ ┃ ┃ ┗ 📄app.py                     // Main Dash application entry point
  ┣ 📄.env_example                // Template for environment variables
  ┣ 📄.gitignore                  // Git ignore patterns (env, cache, database)
  ┣ 📄.pre-commit-config.yaml     // Pre-commit hooks (ruff, commit message)
  ┣ 📄.pre-commit_msg_template.py // Commit message format validator
+ ┣ 📄.python-version             // Python version
  ┣ 📄LICENSE                     // MIT License
  ┣ 📄README.md                   // Project documentation
- ┗ 📄requirements.txt            // Python dependencies
+ ┣ 📄pyproject.toml              // Project configuration
+ ┣ 📄requirements.txt            // Project dependencies
+ ┗ 📄uv.lock                     // Lock file
 ```
