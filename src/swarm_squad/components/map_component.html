@@ -10,6 +10,7 @@
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
     <link rel="icon" href="../assets/favicon.ico" type="image/x-icon">
+
     <style>
         body {
             margin: 0;
@@ -22,6 +23,32 @@
             bottom: 0;
             width: 100%;
         }
+
+        #style-menu {
+            position: absolute;
+            top: 40px;
+            left: 10px;
+            z-index: 1000;
+            font-family: Arial, sans-serif;
+        }
+
+        #style-menu select {
+            padding: 5px;
+            font-size: 14px;
+            border-radius: 3px;
+            border: 1px solid #ccc;
+            background-color: white;
+            color: #333;
+            cursor: pointer;
+            width: 100%;
+            text-align: center;
+        }
+
+        #style-menu select option {
+            background-color: white;
+            color: #333;
+            text-align: center;
+        }
     </style>
 </head>
 
@@ -30,6 +57,9 @@
         type="text/javascript"></script>
     <link href="https://cdn.jsdelivr.net/gh/jscastro76/threebox@v.2.2.7/dist/threebox.css" rel="stylesheet" />
     <div id="map"></div>
+
+    <!-- Style menu is now created dynamically in JavaScript -->
+
     <script>
         mapboxgl.accessToken = 'YOUR_MAPBOX_TOKEN_PLACEHOLDER';
 
@@ -45,11 +75,12 @@
             preserveDrawingBuffer: false,
             powerPreference: 'high-performance'
         };
-        
+
         // Declare drones at a higher scope
         let drones = {};
         let websocket = null;
-        
+        let threebox_initialized = false; // Add this flag to track when threebox is ready
+
         // Add connection status indicator
         const connectionStatus = document.createElement('div');
         connectionStatus.style.position = 'absolute';
@@ -62,9 +93,48 @@
         connectionStatus.style.fontFamily = 'Arial, sans-serif';
         connectionStatus.style.fontSize = '14px';
         connectionStatus.style.zIndex = '1000';
+        connectionStatus.id = 'connection-status';
         connectionStatus.textContent = 'WebSocket: Connecting...';
         document.body.appendChild(connectionStatus);
-        
+
+        // Create style menu with JavaScript to match connection status width
+        const styleMenu = document.createElement('div');
+        styleMenu.id = 'style-menu';
+        styleMenu.style.width = 'auto';
+
+        const styleSelector = document.createElement('select');
+        styleSelector.id = 'style-selector';
+
+        const mapStyles = [
+            { value: 'mapbox://styles/mapbox/standard', text: 'Standard' },
+            { value: 'mapbox://styles/mapbox/standard-satellite', text: 'Standard Satellite' },
+            { value: 'mapbox://styles/mapbox/streets-v12', text: 'Streets' },
+            { value: 'mapbox://styles/mapbox/outdoors-v12', text: 'Outdoors' },
+            { value: 'mapbox://styles/mapbox/light-v11', text: 'Light' },
+            { value: 'mapbox://styles/mapbox/dark-v11', text: 'Dark' },
+            { value: 'mapbox://styles/mapbox/satellite-v9', text: 'Satellite' },
+            { value: 'mapbox://styles/mapbox/satellite-streets-v12', text: 'Satellite Streets' },
+            { value: 'mapbox://styles/mapbox/navigation-day-v1', text: 'Navigation Day' },
+            { value: 'mapbox://styles/mapbox/navigation-night-v1', text: 'Navigation Night' }
+        ];
+
+        mapStyles.forEach((style, index) => {
+            const option = document.createElement('option');
+            option.value = style.value;
+            option.textContent = style.text;
+            if (index === 0) option.selected = true;
+            styleSelector.appendChild(option);
+        });
+
+        styleMenu.appendChild(styleSelector);
+        document.body.appendChild(styleMenu);
+
+        // Adjust widths after elements are in the DOM
+        window.addEventListener('load', function () {
+            const statusWidth = document.getElementById('connection-status').offsetWidth;
+            document.getElementById('style-menu').style.width = statusWidth + 'px';
+        });
+
         // Initialize WebSocket connection immediately
         const connectWebSocket = () => {
             console.log('[INFO] Attempting to connect to WebSocket server...');
@@ -106,7 +176,7 @@
                         firstDroneName: droneNames[0]
                     });
 
-                    if (window.tb) { // Only process if threebox is initialized
+                    if (window.tb && threebox_initialized) { // Only process if threebox is initialized and ready
                         for (let i = 0; i < newCoords.length; i++) {
                             let name = droneNames[i];
                             let coords = newCoords[i][0].split(',').map(Number);
@@ -218,77 +288,230 @@
             trackUserLocation: true
         }));
 
-        // Add a drone to the map.
+        // Immediately initialize the 3D layer after map style is ready
         map.on('style.load', function () {
-            map.addSource('mapbox-dem', {
-                'type': 'raster-dem',
-                'url': 'mapbox://mapbox.terrain-rgb'
-            });
+            console.log('[INFO] Map style loaded, initializing terrain and 3D layer');
+            try {
+                // Add terrain source if it doesn't exist
+                if (!map.getSource('mapbox-dem')) {
+                    map.addSource('mapbox-dem', {
+                        'type': 'raster-dem',
+                        'url': 'mapbox://mapbox.terrain-rgb'
+                    });
+                }
 
-            map.setTerrain({
-                'source': 'mapbox-dem',
-                'exaggeration': 1.5
-            });
+                map.setTerrain({
+                    'source': 'mapbox-dem',
+                    'exaggeration': 1.5
+                });
 
-            map.addLayer({
-                id: 'custom_layer',
-                type: 'custom',
-                renderingMode: '3d',
-                onAdd: function (map, mbxContext) {
-                    window.tb = new Threebox(
-                        map,
-                        mbxContext,
-                        {
-                            defaultLights: true,
-                            enableSelectingFeatures: true,
-                            enableSelectingObjects: true,
-                            enableDraggingObjects: true,
-                            enableRotatingObjects: true,
-                            enableTooltips: true
-                        }
-                    );
-                },
-                render: function (gl, matrix) {
-                    // Update animations
-                    const now = Date.now();
-                    Object.values(drones).forEach(drone => {
-                        if (drone.mixer) {
-                            const delta = (now - (drone.lastUpdate || now)) / 1000;
-                            drone.mixer.update(delta);
-                            drone.lastUpdate = now;
-                        }
+                // Add the 3D layer if it doesn't exist
+                if (!map.getLayer('custom_layer')) {
+                    map.addLayer({
+                        id: 'custom_layer',
+                        type: 'custom',
+                        renderingMode: '3d',
+                        onAdd: function (map, mbxContext) {
+                            console.log('[INFO] Initializing Threebox');
+                            window.tb = new Threebox(
+                                map,
+                                mbxContext,
+                                {
+                                    defaultLights: true,
+                                    enableSelectingFeatures: true,
+                                    enableSelectingObjects: true,
+                                    enableDraggingObjects: true,
+                                    enableRotatingObjects: true,
+                                    enableTooltips: true
+                                }
+                            );
+                            threebox_initialized = true; // Mark as initialized
+                            console.log('[INFO] Threebox initialization complete');
+                        },
+                        render: function (gl, matrix) {
+                            // Update animations
+                            const now = Date.now();
+                            Object.values(drones).forEach(drone => {
+                                if (drone.mixer) {
+                                    const delta = (now - (drone.lastUpdate || now)) / 1000;
+                                    drone.mixer.update(delta);
+                                    drone.lastUpdate = now;
+                                }
 
-                        // Smooth position and rotation updates
-                        if (drone.targetCoords && drone.coordinates) {
-                            // Interpolation factor (adjust this value to control smoothing)
-                            const lerpFactor = 0.1;
+                                // Smooth position and rotation updates
+                                if (drone.targetCoords && drone.coordinates) {
+                                    // Interpolation factor (adjust this value to control smoothing)
+                                    const lerpFactor = 0.1;
 
-                            // Interpolate position
-                            const newCoords = [
-                                drone.coordinates[0] + (drone.targetCoords[0] - drone.coordinates[0]) * lerpFactor,
-                                drone.coordinates[1] + (drone.targetCoords[1] - drone.coordinates[1]) * lerpFactor,
-                                drone.coordinates[2] + (drone.targetCoords[2] - drone.coordinates[2]) * lerpFactor
-                            ];
-                            drone.setCoords(newCoords);
+                                    // Interpolate position
+                                    const newCoords = [
+                                        drone.coordinates[0] + (drone.targetCoords[0] - drone.coordinates[0]) * lerpFactor,
+                                        drone.coordinates[1] + (drone.targetCoords[1] - drone.coordinates[1]) * lerpFactor,
+                                        drone.coordinates[2] + (drone.targetCoords[2] - drone.coordinates[2]) * lerpFactor
+                                    ];
+                                    drone.setCoords(newCoords);
 
-                            // Interpolate rotation
-                            if (drone.targetRotation && drone.currentRotation) {
-                                const newRotation = {
-                                    x: drone.currentRotation.x + (drone.targetRotation.x - drone.currentRotation.x) * lerpFactor,
-                                    y: drone.currentRotation.y + (drone.targetRotation.y - drone.currentRotation.y) * lerpFactor,
-                                    z: drone.currentRotation.z + (drone.targetRotation.z - drone.currentRotation.z) * lerpFactor
-                                };
-                                drone.setRotation(newRotation);
-                                drone.currentRotation = newRotation;
+                                    // Interpolate rotation
+                                    if (drone.targetRotation && drone.currentRotation) {
+                                        const newRotation = {
+                                            x: drone.currentRotation.x + (drone.targetRotation.x - drone.currentRotation.x) * lerpFactor,
+                                            y: drone.currentRotation.y + (drone.targetRotation.y - drone.currentRotation.y) * lerpFactor,
+                                            z: drone.currentRotation.z + (drone.targetRotation.z - drone.currentRotation.z) * lerpFactor
+                                        };
+                                        drone.setRotation(newRotation);
+                                        drone.currentRotation = newRotation;
+                                    }
+                                }
+                            });
+                            if (window.tb) {
+                                window.tb.update();
                             }
                         }
                     });
-                    if (window.tb) {
-                        window.tb.update();
-                    }
+                } else {
+                    // If layer already exists, just mark as initialized
+                    threebox_initialized = true;
+                    console.log('[INFO] 3D layer already exists');
                 }
+            } catch (error) {
+                console.error('[ERROR] Failed to initialize 3D layer:', error);
+            }
+        });
+
+        // Style selector event handler
+        document.addEventListener('DOMContentLoaded', function () {
+            document.getElementById('style-selector').addEventListener('change', function () {
+                const previousDrones = drones; // Store current drone data
+                drones = {};
+                threebox_initialized = false; // Reset initialization flag
+                
+                map.setStyle(this.value);
+                
+                // Listen for style load event to re-add custom layers
+                map.once('style.load', function () {
+                    // Re-add terrain
+                    map.addSource('mapbox-dem', {
+                        'type': 'raster-dem',
+                        'url': 'mapbox://mapbox.terrain-rgb'
+                    });
+
+                    map.setTerrain({
+                        'source': 'mapbox-dem',
+                        'exaggeration': 1.5
+                    });
+
+                    // Re-add the custom layer for 3D models
+                    map.addLayer({
+                        id: 'custom_layer',
+                        type: 'custom',
+                        renderingMode: '3d',
+                        onAdd: function (map, mbxContext) {
+                            window.tb = new Threebox(
+                                map,
+                                mbxContext,
+                                {
+                                    defaultLights: true,
+                                    enableSelectingFeatures: true,
+                                    enableSelectingObjects: true,
+                                    enableDraggingObjects: true,
+                                    enableRotatingObjects: true,
+                                    enableTooltips: true
+                                }
+                            );
+
+                            // Re-add drones that were visible before style change
+                            if (previousDrones && Object.keys(previousDrones).length > 0) {
+                                console.log('[INFO] Reloading drones after style change');
+                                Object.entries(previousDrones).forEach(([name, oldDrone]) => {
+                                    if (oldDrone.coordinates) {
+                                        var options = {
+                                            obj: '../assets/models/drone.glb',
+                                            type: 'gltf',
+                                            scale: 0.5,
+                                            units: 'meters',
+                                            rotation: oldDrone.currentRotation || { x: 0, y: 0, z: 0 }
+                                        };
+
+                                        window.tb.loadObj(options, function (model) {
+                                            let drone = model.setCoords(oldDrone.coordinates);
+                                            drone.name = name;
+
+                                            if (oldDrone.targetCoords) {
+                                                drone.targetCoords = oldDrone.targetCoords;
+                                            }
+
+                                            if (oldDrone.targetRotation) {
+                                                drone.targetRotation = oldDrone.targetRotation;
+                                                drone.currentRotation = oldDrone.currentRotation;
+                                            }
+
+                                            drone.addTooltip(` ${name}<br>
+                                            (${oldDrone.coordinates[0].toFixed(6)}, ${oldDrone.coordinates[1].toFixed(6)}, ${oldDrone.coordinates[2].toFixed(1)})<br>
+                                            P:${(oldDrone.currentRotation?.x || 0).toFixed(1)}° Y:${(oldDrone.currentRotation?.y || 0).toFixed(1)}° R:${(oldDrone.currentRotation?.z || 0).toFixed(1)}°
+                                            `, true);
+
+                                            if (model.animations && model.animations.length > 0) {
+                                                drone.mixer = new THREE.AnimationMixer(model);
+                                                model.animations.forEach((animation) => {
+                                                    let action = drone.mixer.clipAction(animation);
+                                                    action.play();
+                                                });
+                                                drone.lastUpdate = Date.now();
+                                            }
+
+                                            window.tb.add(drone);
+                                            drones[name] = drone;
+                                        });
+                                    }
+                                });
+                            }
+                        },
+                        render: function (gl, matrix) {
+                            // Update animations
+                            const now = Date.now();
+                            Object.values(drones).forEach(drone => {
+                                if (drone.mixer) {
+                                    const delta = (now - (drone.lastUpdate || now)) / 1000;
+                                    drone.mixer.update(delta);
+                                    drone.lastUpdate = now;
+                                }
+
+                                // Smooth position and rotation updates
+                                if (drone.targetCoords && drone.coordinates) {
+                                    // Interpolation factor (adjust this value to control smoothing)
+                                    const lerpFactor = 0.1;
+
+                                    // Interpolate position
+                                    const newCoords = [
+                                        drone.coordinates[0] + (drone.targetCoords[0] - drone.coordinates[0]) * lerpFactor,
+                                        drone.coordinates[1] + (drone.targetCoords[1] - drone.coordinates[1]) * lerpFactor,
+                                        drone.coordinates[2] + (drone.targetCoords[2] - drone.coordinates[2]) * lerpFactor
+                                    ];
+                                    drone.setCoords(newCoords);
+
+                                    // Interpolate rotation
+                                    if (drone.targetRotation && drone.currentRotation) {
+                                        const newRotation = {
+                                            x: drone.currentRotation.x + (drone.targetRotation.x - drone.currentRotation.x) * lerpFactor,
+                                            y: drone.currentRotation.y + (drone.targetRotation.y - drone.currentRotation.y) * lerpFactor,
+                                            z: drone.currentRotation.z + (drone.targetRotation.z - drone.currentRotation.z) * lerpFactor
+                                        };
+                                        drone.setRotation(newRotation);
+                                        drone.currentRotation = newRotation;
+                                    }
+                                }
+                            });
+                            if (window.tb) {
+                                window.tb.update();
+                            }
+                        }
+                    });
+                    
+                    // At the end of initialization, mark as ready
+                    threebox_initialized = true;
+                });
             });
-        })
+        });
     </script>
 </body>
 
