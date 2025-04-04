@@ -107,14 +107,9 @@ swarm-squad --help
 6. **Set up environment variables:**
    ```bash
    # Copy the example environment file
-   cp .env_example .env
+   cp .env.example .env
    ```
-   Then edit `.env` and add your configurations:
-   ```
-   MAPBOX_ACCESS_TOKEN=your_mapbox_token_here
-   OLLAMA_API_URL=http://localhost:11434
-   ```
-   - You can get a Mapbox access token by signing up at https://www.mapbox.com/
+   - You can get a `MAPBOX_ACCESS_TOKEN` by signing up at https://www.account.mapbox.com/
    - Update the `OLLAMA_API_URL` if your Ollama instance is running on a different address
 
 7. **Install ruff and pre-commit:**
@@ -163,13 +158,16 @@ swarm-squad --help
  ┃ ┃ ┃ ┣ 📂js                       // JavaScript files
  ┃ ┃ ┃ ┣ 📂models                   // Model files
  ┃ ┃ ┃ ┗ 📄favicon.ico              // Favicon
+ ┃ ┃ ┣ 📂cli                        // CLI commands
  ┃ ┃ ┣ 📂components                 // Reusable UI components
  ┃ ┃ ┣ 📂data                       // Database files
  ┃ ┃ ┣ 📂pages                      // Page components and routing
  ┃ ┃ ┣ 📂scripts                    // Simulation and algorithm scripts
  ┃ ┃ ┣ 📂utils                      // Utility functions and helpers
- ┃ ┃ ┗ 📄app.py                     // Main Dash application entry point
- ┣ 📄.env_example                // Template for environment variables
+ ┃ ┃ ┣ 📂cli                        // CLI commands
+ ┃ ┃ ┣ 📄app.py                     // Entry point
+ ┃ ┃ ┗ 📄core.py                    // Dash app core
+ ┣ 📄.env.example                // Template for environment variables
  ┣ 📄.gitignore                  // Git ignore patterns (env, cache, database)
  ┣ 📄.pre-commit-config.yaml     // Pre-commit hooks (ruff, commit message)
  ┣ 📄.pre-commit_msg_template.py // Commit message format validator

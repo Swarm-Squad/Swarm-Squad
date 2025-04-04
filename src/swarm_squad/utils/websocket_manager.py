@@ -65,16 +65,27 @@ class WebSocketManager:
         )
 
     def start_websocket(self):
-        """Start the WebSocket server in a background thread"""
+        """Start the WebSocket server in a background thread (only in main process)."""
+        # Prevent execution in the reloader process
+        if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+            logger.debug(
+                f"Process ID {os.getpid()}: Skipping WebSocket start in reloader process."
+            )
+            return
+
+        logger.debug(
+            f"Process ID {os.getpid()}: Attempting to start WebSocket server..."
+        )
+
         if self.is_websocket_running():
-            logger.info("WebSocket server already running")
+            logger.debug("WebSocket server already running")
             return
 
         # Check if port is already in use
         port_status = self.is_port_in_use(8051)
 
         if port_status:
-            logger.info("Port 8051 is in use, attempting to release it")
+            logger.debug("Port 8051 is in use, attempting to release it")
             release_success = self.force_release_port(8051)
 
             if not release_success:
@@ -90,7 +101,7 @@ class WebSocketManager:
                 )
                 return
         else:
-            logger.info("Port 8051 is available for use")
+            logger.debug("Port 8051 is available for use")
 
         # At this point, we've verified the port is free
         self._is_running = True
@@ -101,7 +112,7 @@ class WebSocketManager:
             daemon=True,  # This ensures the thread will exit when the main program exits
         )
         self._websocket_thread.start()
-        logger.info("WebSocket server started")
+        logger.info("Started background WebSocket server")
 
     def _run_websocket_server(self):
         """Run the websocket server in its own event loop"""

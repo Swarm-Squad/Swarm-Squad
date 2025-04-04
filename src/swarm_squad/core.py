@@ -3,6 +3,7 @@ Core application setup for Swarm Squad Dash app.
 """
 
 import atexit
+import os
 import signal
 import sys
 
@@ -33,16 +34,28 @@ def create_app():
     # Initialize WebSocket manager (singleton)
     ws_manager = WebSocketManager()
 
-    # Define a signal handler to ensure cleanup
-    def signal_handler(sig, frame):
-        logger.info(f"Signal {sig} received, cleaning up resources...")
-        if ws_manager:
-            ws_manager.cleanup_websocket(force=True)
-        sys.exit(0)
+    # --- Signal Handling and Cleanup Registration (Main Process Only) ---
+    # Prevents duplicate registration/logging in Werkzeug reloader process
+    if os.environ.get("WERKZEUG_RUN_MAIN") != "true":
+        logger.debug("Registering signal handlers and atexit cleanup in main process.")
 
-    # Register the signal handlers
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
+        # Define a signal handler to ensure cleanup
+        def signal_handler(sig, frame):
+            # Use logger defined outside the handler
+            logger.info(f"Signal {sig} received, cleaning up resources...")
+            if ws_manager:
+                ws_manager.cleanup_websocket(force=True)
+            sys.exit(0)
+
+        # Register the signal handlers
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
+
+        # Register WebSocket cleanup via atexit
+        atexit.register(ws_manager.cleanup_websocket)
+    else:
+        logger.debug("Skipping signal/atexit registration in reloader process.")
+    # -------------------------------------------------------------------
 
     # --- Dash App Initialization ---
     app = Dash(
@@ -83,10 +96,6 @@ def create_app():
         },
     )
 
-    # --- WebSocket Cleanup Registration ---
-    # Ensure cleanup happens even if the app exits unexpectedly
-    atexit.register(ws_manager.cleanup_websocket)
-
     # --- App Layout Definition ---
     app.layout = dmc.MantineProvider(
         theme={
@@ -114,7 +123,7 @@ def create_app():
     # --- App Callbacks ---
     register_callbacks(app)
 
-    logger.info("Dash application created successfully.")
+    logger.debug("Dash application created successfully.")
     return app, ws_manager
 
 

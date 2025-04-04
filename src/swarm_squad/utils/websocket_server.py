@@ -79,7 +79,7 @@ class DroneWebsocketServer:
             await asyncio.sleep(0.1)  # 100ms update rate
 
     async def handle_client(self, websocket):
-        logger.info("New client connected")
+        logger.debug("New client connected")
         self.connected_clients.add(websocket)
         try:
             await websocket.wait_closed()
@@ -89,7 +89,7 @@ class DroneWebsocketServer:
             logger.error(f"Error handling client: {e}")
         finally:
             self.connected_clients.remove(websocket)
-            logger.info("Client disconnected")
+            logger.debug("Client disconnected")
 
     def stop(self):
         """Stop the websocket server"""
@@ -167,7 +167,7 @@ class DroneWebsocketServer:
             if self.server:
                 self.server.close()
                 await self.server.wait_closed()
-                logger.info("WebSocket server closed")
+                logger.debug("WebSocket server closed")
 
     def run(self):
         try:
