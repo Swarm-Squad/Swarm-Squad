@@ -3,6 +3,11 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from swarm_squad.utils.logger import get_logger
+
+# Create module logger
+logger = get_logger("map_fetcher")
+
 # Define paths for various locations to look for .env files
 PROJECT_ROOT = Path(__file__).resolve().parents[3]  # 3 levels up from this file
 CURRENT_DIR = Path.cwd()  # Current working directory when command is run
@@ -20,16 +25,25 @@ MAP_COMPONENT_PATH = (
 def load_mapbox_token():
     """Load Mapbox access token from .env file"""
     # Try each possible .env location in order
+    env_loaded = False
     for env_path in ENV_SEARCH_PATHS:
         if env_path.exists():
             load_dotenv(env_path)
-            print(f"[INFO] Loaded environment from {env_path}")
+            env_loaded = True
             break
-    else:
-        print("[ERROR] No .env file found!")
+
+    if not env_loaded:
+        logger.error("No .env file found in search paths!")
 
     # Get the token from environment
-    return os.getenv("MAPBOX_ACCESS_TOKEN")
+    token = os.getenv("MAPBOX_ACCESS_TOKEN")
+    if token:
+        logger.debug("MAPBOX_ACCESS_TOKEN loaded successfully.")
+    else:
+        logger.warning(
+            "MAPBOX_ACCESS_TOKEN not found in environment variables after checking .env files."
+        )
+    return token
 
 
 def get_error_html(message):
@@ -56,12 +70,14 @@ def read_map_html():
 
     # Check if token exists
     if not mapbox_token:
+        logger.warning("No MAPBOX_ACCESS_TOKEN found in environment")
         return get_error_html(
             "Please set a valid MAPBOX_ACCESS_TOKEN in your .env file."
         )
 
     # Check if map component file exists
     if not MAP_COMPONENT_PATH.exists():
+        logger.error(f"Map component file not found at: {MAP_COMPONENT_PATH}")
         return get_error_html(f"Map component file not found at: {MAP_COMPONENT_PATH}")
 
     # Read and process map component
@@ -70,5 +86,5 @@ def read_map_html():
             content = f.read()
             return content.replace("YOUR_MAPBOX_TOKEN_PLACEHOLDER", mapbox_token)
     except Exception as e:
-        print(f"[ERROR] Failed to read map component: {e}")
+        logger.error(f"Failed to read map component: {e}")
         return get_error_html(f"Error reading map component: {str(e)}")

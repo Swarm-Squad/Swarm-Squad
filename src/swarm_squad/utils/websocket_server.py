@@ -9,6 +9,11 @@ import pandas as pd
 import websockets
 from websockets.exceptions import ConnectionClosedError
 
+from swarm_squad.utils.logger import get_logger
+
+# Create module logger
+logger = get_logger("websocket_server")
+
 
 class DroneWebsocketServer:
     def __init__(self, host="localhost", port=8051):
@@ -40,7 +45,7 @@ class DroneWebsocketServer:
                 "timestamp": datetime.now().isoformat(),
             }
         except Exception as e:
-            print(f"Error getting drone data: {e}")
+            logger.error(f"Error getting drone data: {e}")
             # Return empty data on error
             return {
                 "droneCoords": [],
@@ -69,31 +74,31 @@ class DroneWebsocketServer:
                         await asyncio.gather(*websockets_coros, return_exceptions=True)
 
             except Exception as e:
-                print(f"Error broadcasting data: {e}")
+                logger.error(f"Error broadcasting data: {e}")
 
             await asyncio.sleep(0.1)  # 100ms update rate
 
     async def handle_client(self, websocket):
-        print("[CONNECTION] New client connected")
+        logger.info("New client connected")
         self.connected_clients.add(websocket)
         try:
             await websocket.wait_closed()
         except ConnectionClosedError:
-            print("[ERROR] Client connection closed unexpectedly")
+            logger.error("Client connection closed unexpectedly")
         except Exception as e:
-            print(f"[ERROR] Error handling client: {e}")
+            logger.error(f"Error handling client: {e}")
         finally:
             self.connected_clients.remove(websocket)
-            print("[CONNECTION] Client disconnected")
+            logger.info("Client disconnected")
 
     def stop(self):
         """Stop the websocket server"""
-        print("[INFO] Stopping WebSocket server...")
+        logger.debug("Stopping WebSocket server...")
         self.stop_event.set()
 
         # Close all connected clients
         if self.connected_clients:
-            print(f"[INFO] Closing {len(self.connected_clients)} client connections...")
+            logger.info(f"Closing {len(self.connected_clients)} client connections...")
             loop = asyncio.get_event_loop_policy().get_event_loop()
             if loop.is_running():
                 for client in list(self.connected_clients):
@@ -102,10 +107,10 @@ class DroneWebsocketServer:
                             client.close(code=1001, reason="Server shutting down")
                         )
                     except Exception as e:
-                        print(f"[ERROR] Error closing client connection: {e}")
+                        logger.error(f"Error closing client connection: {e}")
             else:
-                print(
-                    "[WARNING] Event loop not running, cannot close client connections gracefully"
+                logger.warning(
+                    "Event loop not running, cannot close client connections gracefully"
                 )
 
         # Cancel any pending tasks
@@ -132,9 +137,7 @@ class DroneWebsocketServer:
             )
 
             self.server = await server
-            print(
-                f"\n\n[INFO] WebSocket server running at ws://{self.host}:{self.port}"
-            )
+            logger.info(f"WebSocket server running at ws://{self.host}:{self.port}")
 
             # Create a task for the broadcast loop
             broadcast_task = asyncio.create_task(self.broadcast_drone_data())
@@ -144,7 +147,7 @@ class DroneWebsocketServer:
             await self.stop_event.wait()
 
         except Exception as e:
-            print(f"[ERROR] WebSocket server error: {e}")
+            logger.error(f"WebSocket server error: {e}")
         finally:
             self.stop_event.set()
 
@@ -158,21 +161,21 @@ class DroneWebsocketServer:
                 try:
                     await client.close(code=1001, reason="Server shutting down")
                 except Exception as e:
-                    print(f"[ERROR] Error closing client connection: {e}")
+                    logger.error(f"Error closing client connection: {e}")
 
             # Close server
             if self.server:
                 self.server.close()
                 await self.server.wait_closed()
-                print("[INFO] WebSocket server closed")
+                logger.info("WebSocket server closed")
 
     def run(self):
         try:
             asyncio.run(self.start_server())
         except KeyboardInterrupt:
-            print("\n[INFO] Server stopped by user")
+            logger.info("Server stopped by user")
         except Exception as e:
-            print(f"[ERROR] Server error: {e}")
+            logger.error(f"Server error: {e}")
 
 
 if __name__ == "__main__":

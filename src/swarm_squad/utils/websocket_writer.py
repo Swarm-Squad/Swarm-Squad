@@ -2,7 +2,11 @@ from datetime import datetime
 from queue import Queue
 from typing import Any, Dict
 
+from swarm_squad.utils.logger import get_logger
 from swarm_squad.utils.websocket_manager import WebSocketManager
+
+# Create module logger
+logger = get_logger("websocket_writer")
 
 
 class WebSocketWriter:
@@ -12,6 +16,7 @@ class WebSocketWriter:
         self._message_queue = Queue()
         # Use existing WebSocket manager instance
         self.ws_manager = WebSocketManager()  # This will return the singleton instance
+        logger.debug("WebSocketWriter initialized")
 
     def ws_writer(self, data: Dict[str, Any]):
         """Write data to the WebSocket server through the database"""
@@ -25,6 +30,9 @@ class WebSocketWriter:
             "timestamp": datetime.now().isoformat(),
         }
         self._message_queue.put(ws_data)
+        logger.debug(
+            f"Added data to WebSocket queue (queue size: {self._message_queue.qsize()})"
+        )
 
 
 # Global WebSocket writer instance
@@ -35,6 +43,7 @@ def get_ws_writer() -> WebSocketWriter:
     """Get or create the global WebSocket writer instance"""
     global _ws_writer
     if _ws_writer is None:
+        logger.debug("Creating global WebSocketWriter instance")
         _ws_writer = WebSocketWriter()
     return _ws_writer
 

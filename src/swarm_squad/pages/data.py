@@ -243,10 +243,10 @@ layout = html.Div(
         Output("mission-table-container", "children"),
         Output("telemetry-table-container", "children"),
         Output("system-table-container", "children"),
-        Output("agent-column-select", "value"),
-        Output("mission-column-select", "value"),
-        Output("telemetry-column-select", "value"),
-        Output("system-column-select", "value"),
+        Output("agent-column-select", "value", allow_duplicate=True),
+        Output("mission-column-select", "value", allow_duplicate=True),
+        Output("telemetry-column-select", "value", allow_duplicate=True),
+        Output("system-column-select", "value", allow_duplicate=True),
     ],
     [
         Input("agent-column-select", "value"),
@@ -255,6 +255,7 @@ layout = html.Div(
         Input("system-column-select", "value"),
         Input("interval-component", "n_intervals"),
     ],
+    prevent_initial_call=True,
 )
 def update_tables(agent_cols, mission_cols, telemetry_cols, system_cols, n_intervals):
     try:

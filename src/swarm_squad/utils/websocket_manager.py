@@ -7,7 +7,11 @@ import subprocess
 import threading
 import time
 
+from swarm_squad.utils.logger import get_logger
 from swarm_squad.utils.websocket_server import DroneWebsocketServer
+
+# Create module logger
+logger = get_logger("websocket_manager")
 
 
 class WebSocketManager:
@@ -34,7 +38,7 @@ class WebSocketManager:
 
     def _signal_handler(self, sig, frame):
         """Handle termination signals"""
-        print(f"[INFO] Received signal {sig}, shutting down...")
+        logger.info(f"Received signal {sig}, shutting down...")
         self.cleanup_websocket(force=True)
         # Continue with default signal handling
         signal.default_int_handler(sig, frame)
@@ -63,30 +67,30 @@ class WebSocketManager:
     def start_websocket(self):
         """Start the WebSocket server in a background thread"""
         if self.is_websocket_running():
-            print("[INFO] WebSocket server already running")
+            logger.info("WebSocket server already running")
             return
 
         # Check if port is already in use
         port_status = self.is_port_in_use(8051)
 
         if port_status:
-            print("[INFO] Port 8051 is in use, attempting to release it")
+            logger.info("Port 8051 is in use, attempting to release it")
             release_success = self.force_release_port(8051)
 
             if not release_success:
-                print(
-                    "[ERROR] Failed to release port 8051, websocket server will not start"
+                logger.error(
+                    "Failed to release port 8051, websocket server will not start"
                 )
                 return
 
             # Double-check port status after release attempt
             if self.is_port_in_use(8051):
-                print(
-                    "[ERROR] Port 8051 is still in use after release attempt, websocket server will not start"
+                logger.error(
+                    "Port 8051 is still in use after release attempt, websocket server will not start"
                 )
                 return
         else:
-            print("[INFO] Port 8051 is available for use")
+            logger.info("Port 8051 is available for use")
 
         # At this point, we've verified the port is free
         self._is_running = True
@@ -97,7 +101,7 @@ class WebSocketManager:
             daemon=True,  # This ensures the thread will exit when the main program exits
         )
         self._websocket_thread.start()
-        print("[INFO] WebSocket server started")
+        logger.info("WebSocket server started")
 
     def _run_websocket_server(self):
         """Run the websocket server in its own event loop"""
@@ -106,14 +110,14 @@ class WebSocketManager:
         try:
             loop.run_until_complete(self._server.start_server())
         except Exception as e:
-            print(f"[ERROR] WebSocket server error: {e}")
+            logger.error(f"WebSocket server error: {e}")
         finally:
             loop.close()
 
     def cleanup_websocket(self, force=False):
         """Cleanup the WebSocket server"""
         if self._is_running or force:
-            print("[INFO] Shutting down WebSocket server...")
+            logger.debug("Shutting down WebSocket server...")
             self._is_running = False
 
             # Signal the server to stop
@@ -127,7 +131,7 @@ class WebSocketManager:
             # Force release the port
             self.force_release_port(8051)
 
-            print("[INFO] WebSocket server stopped")
+            logger.debug("WebSocket server stopped")
 
     def force_release_port(self, port, host="localhost"):
         """Force release a port by creating and closing a socket"""
@@ -138,16 +142,16 @@ class WebSocketManager:
         sock.close()
 
         if result == 0:  # Port is in use
-            print(
-                f"[DEBUG] Port {port} is confirmed to be in use (connect_ex returned 0)"
+            logger.debug(
+                f"Port {port} is confirmed to be in use (connect_ex returned 0)"
             )
             try:
                 # Try multiple methods to kill the process using the port (Linux only)
                 try:
                     # First try fuser (commonly available)
                     try:
-                        print(
-                            f"[INFO] Attempting to kill process using port {port} with fuser"
+                        logger.info(
+                            f"Attempting to kill process using port {port} with fuser"
                         )
                         os.system(f"fuser -k {port}/tcp >/dev/null 2>&1")
                     except Exception:
@@ -155,8 +159,8 @@ class WebSocketManager:
 
                     # Try lsof as an alternative
                     try:
-                        print(
-                            f"[INFO] Attempting to find and kill process using port {port} with lsof"
+                        logger.info(
+                            f"Attempting to find and kill process using port {port} with lsof"
                         )
                         process = subprocess.run(
                             ["lsof", "-i", f":{port}", "-t"],
@@ -167,16 +171,16 @@ class WebSocketManager:
                             for pid in process.stdout.strip().split("\n"):
                                 if pid:
                                     os.system(f"kill -9 {pid} >/dev/null 2>&1")
-                                    print(
-                                        f"[INFO] Killed process {pid} using port {port}"
+                                    logger.info(
+                                        f"Killed process {pid} using port {port}"
                                     )
                     except Exception:
                         pass
 
                     # Try netstat as another alternative
                     try:
-                        print(
-                            f"[INFO] Attempting to find and kill process using port {port} with netstat"
+                        logger.info(
+                            f"Attempting to find and kill process using port {port} with netstat"
                         )
                         process = subprocess.run(
                             ["netstat", "-tlnp"], capture_output=True, text=True
@@ -188,14 +192,14 @@ class WebSocketManager:
                                     if "/" in part:
                                         pid = part.split("/")[0]
                                         os.system(f"kill -9 {pid} >/dev/null 2>&1")
-                                        print(
-                                            f"[INFO] Killed process {pid} using port {port}"
+                                        logger.info(
+                                            f"Killed process {pid} using port {port}"
                                         )
                     except Exception:
                         pass
 
                 except Exception as e:
-                    print(f"[WARNING] Could not kill process using port {port}: {e}")
+                    logger.warning(f"Could not kill process using port {port}: {e}")
 
                 # Wait a moment to allow the port to be released
                 time.sleep(1)
@@ -207,9 +211,9 @@ class WebSocketManager:
                 check_sock.close()
 
                 if check_result == 0:
-                    print(f"[WARNING] Port {port} is still in use after kill attempts")
+                    logger.warning(f"Port {port} is still in use after kill attempts")
                 else:
-                    print(f"[INFO] Successfully released port {port}")
+                    logger.info(f"Successfully released port {port}")
                     return True
 
                 # Create a socket with SO_REUSEADDR and SO_REUSEPORT if available
@@ -219,25 +223,25 @@ class WebSocketManager:
                 try:
                     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
                 except (AttributeError, OSError) as e:
-                    print(f"[WARNING] Could not set SO_REUSEPORT: {e}")
+                    logger.warning(f"Could not set SO_REUSEPORT: {e}")
 
                 try:
                     s.bind((host, port))
                     s.close()
-                    print(
-                        f"[INFO] Successfully bound to port {port}, it should now be released"
+                    logger.info(
+                        f"Successfully bound to port {port}, it should now be released"
                     )
                     return True
                 except socket.error as e:
-                    print(
-                        f"[WARNING] Port {port} is still in use and could not be released: {e}"
+                    logger.warning(
+                        f"Port {port} is still in use and could not be released: {e}"
                     )
                     return False
             except Exception as e:
-                print(f"[ERROR] Could not release port {port}: {e}")
+                logger.error(f"Could not release port {port}: {e}")
                 return False
         else:
-            print(
-                f"[DEBUG] Port {port} is confirmed to be free (connect_ex returned {result})"
+            logger.debug(
+                f"Port {port} is confirmed to be free (connect_ex returned {result})"
             )
             return True

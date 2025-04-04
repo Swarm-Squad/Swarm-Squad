@@ -1,125 +1,64 @@
-import atexit
-import os
-import signal
+"""
+Swarm Squad Application Entry Point.
+
+Handles command-line interface routing and application startup.
+"""
+
 import sys
 
-import dash
-import dash_mantine_components as dmc
-from dash import Dash, dcc, html
-from flask_cors import CORS
+from swarm_squad.utils.logger import get_logger
 
-from swarm_squad.pages.footer import footer
-from swarm_squad.pages.nav import navbar
-from swarm_squad.utils.websocket_manager import WebSocketManager
-
-# Initialize WebSocket manager outside the app
-# This ensures it's only initialized once, even if the app reloads in debug mode
-ws_manager = WebSocketManager()
+# Initialize logger for the entry point
+logger = get_logger("app_entry")
 
 
-# Define a signal handler to ensure cleanup
-def signal_handler(sig, frame):
-    print(f"[INFO] Signal {sig} received, cleaning up resources...")
-    if hasattr(app, "ws_manager"):
-        app.ws_manager.cleanup_websocket(force=True)
-    sys.exit(0)
-
-
-# Register the signal handlers
-signal.signal(signal.SIGINT, signal_handler)
-signal.signal(signal.SIGTERM, signal_handler)
-
-app = Dash(
-    __name__,
-    title="Swarm Squad",
-    use_pages=True,
-    update_title=False,
-    suppress_callback_exceptions=True,
-    prevent_initial_callbacks=True,
-    meta_tags=[
-        {
-            "name": "description",
-            "content": "A simulation framework for multi-agent systems.",
-        },
-        {
-            "name": "keywords",
-            "content": "Swarm Squad, Multi-agent systems, LLM, AI, Simulation, Dash",
-        },
-    ],
-)
-
-# Attach the WebSocket manager to the app
-app.ws_manager = ws_manager
-
-server = app.server
-# Enable CORS for the Flask server
-CORS(
-    server,
-    resources={
-        r"/websocket/*": {
-            "origins": ["http://localhost:8050", "http://127.0.0.1:8050"],
-            "allow_headers": ["*"],
-            "expose_headers": ["*"],
-            "methods": ["GET", "POST", "OPTIONS"],
-            "supports_credentials": True,
-        }
-    },
-)
-
-# Start the websocket server
-# Only start if this is the main process, not a reloader process
-if not os.environ.get("WERKZEUG_RUN_MAIN") == "true":
-    # Start the websocket server - port checking is handled within start_websocket
-    app.ws_manager.start_websocket()
-
-# Make sure the WebSocket server is cleaned up when the app exits
-atexit.register(app.ws_manager.cleanup_websocket)
-
-app.layout = dmc.MantineProvider(
-    theme={
-        "colorScheme": "dark",
-        "primaryColor": "blue",
-    },
-    children=html.Div(
-        [
-            navbar(),
-            html.Div(
-                [
-                    dash.page_container,
-                    dcc.Store("past-launches-data"),
-                    dcc.Store("next-launch-data"),
-                    dcc.Store("last-update"),
-                ],
-                id="page-content",
-                style={"minHeight": "100vh", "position": "relative"},
-            ),
-            footer,
-        ]
-    ),
-)
-
-
-# Add callback to blur content when nav modal is open
-@app.callback(
-    dash.Output("page-content", "className"), dash.Input("full-modal", "opened")
-)
-def toggle_content_blur(modal_opened):
-    if modal_opened:
-        return "content-blur"
-    return ""
-
-
-# Add a main function to serve as the entry point
 def main():
+    """
+    Main entry point function.
+    Parses command-line arguments and executes the appropriate command.
+
+    Command-line usage:
+        python -m swarm_squad.app              # Run web UI with debug mode on
+        python -m swarm_squad.app webui        # Run web UI with debug mode off
+        python -m swarm_squad.app webui --debug # Run web UI with debug mode on
+        python -m swarm_squad.app list         # List available simulations
+        python -m swarm_squad.app run <sim>    # Run a specific simulation
+
+    Returns:
+        int: Exit code (0 for success, non-zero for failure)
+    """
+    logger.debug("Application entry point reached.")
+    exit_code = 1  # Default to error exit code
     try:
-        app.run(debug=True)
+        # NOTE: create_app is implicitly called within cli.command for webui
+        # It initializes the app and ws_manager needed by the commands.
+        from swarm_squad.cli.command import execute_command, get_main_parser
+
+        parser = get_main_parser()
+        args = parser.parse_args()
+
+        logger.debug(f"Parsed CLI arguments: {args}")
+        exit_code = execute_command(args)
+
+    except ImportError as e:
+        logger.critical(f"Failed to import necessary modules: {e}", exc_info=True)
+        print(
+            f"Import Error: {e}. Please ensure dependencies are installed.",
+            file=sys.stderr,
+        )
+        exit_code = 1
+
     except Exception as e:
-        print(f"[ERROR] App error: {e}")
+        logger.critical(f"An unexpected error occurred: {e}", exc_info=True)
+        print(f"Unexpected Error: {e}", file=sys.stderr)
+        exit_code = 1
+
     finally:
-        # Force cleanup the WebSocket server
-        app.ws_manager.cleanup_websocket(force=True)
-    return 0
+        logger.debug(f"Application exiting with code {exit_code}.")
+        # WebSocket cleanup is handled by atexit registered in core.create_app
+
+    return exit_code
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
