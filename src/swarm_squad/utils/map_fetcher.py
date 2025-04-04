@@ -12,10 +12,15 @@ logger = get_logger("map_fetcher")
 PROJECT_ROOT = Path(__file__).resolve().parents[3]  # 3 levels up from this file
 CURRENT_DIR = Path.cwd()  # Current working directory when command is run
 HOME_DIR = Path.home()  # User's home directory
+SWARM_SQUAD_HOME = HOME_DIR / ".swarm_squad"  # User's Swarm Squad home directory
 ENV_SEARCH_PATHS = [
-    CURRENT_DIR / ".env",  # First check current directory
-    HOME_DIR / ".env",  # Then check home directory
-    PROJECT_ROOT / ".env",  # Finally check project root (for development)
+    CURRENT_DIR / ".env",  # Current directory
+    PROJECT_ROOT / ".env",  # Project root (development mode)
+    Path(__file__).parent.parent / ".env",  # src/swarm_squad directory
+    SWARM_SQUAD_HOME / ".env",  # ~/.swarm_squad/.env
+    HOME_DIR / ".env",  # ~/.env
+    CURRENT_DIR.parent / ".env",  # Parent directory
+    None,  # None will trigger load_dotenv() to search in parent directories
 ]
 MAP_COMPONENT_PATH = (
     Path(__file__).resolve().parent.parent / "components" / "map_component.html"
@@ -27,10 +32,21 @@ def load_mapbox_token():
     # Try each possible .env location in order
     env_loaded = False
     for env_path in ENV_SEARCH_PATHS:
-        if env_path.exists():
-            load_dotenv(env_path)
-            env_loaded = True
-            break
+        try:
+            if env_path is None:
+                # Let load_dotenv search in parent directories
+                if load_dotenv():
+                    env_loaded = True
+                    logger.debug("Found .env file using automatic search")
+                    break
+            elif env_path.exists():
+                load_dotenv(env_path)
+                env_loaded = True
+                logger.debug(f"Loaded environment from {env_path}")
+                break
+        except Exception as e:
+            logger.debug(f"Error loading {env_path}: {e}")
+            continue
 
     if not env_loaded:
         logger.error("No .env file found in search paths!")

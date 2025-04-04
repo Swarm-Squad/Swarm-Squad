@@ -4,6 +4,11 @@ import dash_mantine_components as dmc
 import pandas as pd
 from dash import dash_table
 
+from swarm_squad.utils.db_init import get_db_path
+
+# Get the database path
+DB_PATH = get_db_path()
+
 
 def create_data_table(df, id_prefix):
     """Create a styled DataTable component"""
@@ -61,7 +66,7 @@ def create_data_table(df, id_prefix):
 def fetch_agent_data():
     """Fetch agent data from database"""
     try:
-        conn = sqlite3.connect("./src/swarm_squad/data/swarm_squad.db")
+        conn = sqlite3.connect(DB_PATH)
         query = "SELECT * FROM agent"
         df = pd.read_sql_query(query, conn)
         conn.close()
@@ -79,7 +84,7 @@ def fetch_agent_data():
 def fetch_mission_data():
     """Fetch mission data from database"""
     try:
-        conn = sqlite3.connect("./src/swarm_squad/data/swarm_squad.db")
+        conn = sqlite3.connect(DB_PATH)
         query = "SELECT * FROM mission"
         df = pd.read_sql_query(query, conn)
         conn.close()
@@ -97,7 +102,7 @@ def fetch_mission_data():
 def fetch_telemetry_data():
     """Fetch telemetry data from database"""
     try:
-        conn = sqlite3.connect("./src/swarm_squad/data/swarm_squad.db")
+        conn = sqlite3.connect(DB_PATH)
         query = "SELECT * FROM telemetry"
         df = pd.read_sql_query(query, conn)
         conn.close()
@@ -115,7 +120,7 @@ def fetch_telemetry_data():
 def fetch_system_data():
     """Fetch system data from database"""
     try:
-        conn = sqlite3.connect("./src/swarm_squad/data/swarm_squad.db")
+        conn = sqlite3.connect(DB_PATH)
         query = "SELECT * FROM system"
         df = pd.read_sql_query(query, conn)
         conn.close()

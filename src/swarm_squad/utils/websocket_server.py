@@ -9,10 +9,14 @@ import pandas as pd
 import websockets
 from websockets.exceptions import ConnectionClosedError
 
+from swarm_squad.utils.db_init import get_db_path
 from swarm_squad.utils.logger import get_logger
 
 # Create module logger
 logger = get_logger("websocket_server")
+
+# Get the database path
+DB_PATH = get_db_path()
 
 
 class DroneWebsocketServer:
@@ -30,7 +34,7 @@ class DroneWebsocketServer:
     def get_drone_data(self, timestamp):
         """Cache drone data for short periods to reduce database load"""
         try:
-            conn = sqlite3.connect("./src/swarm_squad/data/swarm_squad.db")
+            conn = sqlite3.connect(DB_PATH)
             df = pd.read_sql_query("SELECT * from telemetry", conn)
             conn.close()
 

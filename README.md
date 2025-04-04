@@ -85,7 +85,7 @@ swarm-squad --help
 
 3. **Create a virtual environment at `Swarm-Squad/.venv/`:**
    ```bash
-   uv venv --python 3.12.1
+   uv venv --python 3.10
    ```
 
 4. **Activate the virtual environment:**
@@ -109,8 +109,9 @@ swarm-squad --help
    # Copy the example environment file
    cp .env.example .env
    ```
-   - You can get a `MAPBOX_ACCESS_TOKEN` by signing up at https://www.account.mapbox.com/
+   - You can get a `MAPBOX_ACCESS_TOKEN` by signing up at https://www.mapbox.com/
    - Update the `OLLAMA_API_URL` if your Ollama instance is running on a different address
+   - Update the `DATABASE_PATH` if you want to use a custom database file
 
 7. **Install ruff and pre-commit:**
    ```bash

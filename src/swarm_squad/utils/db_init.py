@@ -6,14 +6,62 @@ import os
 import sqlite3
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 from swarm_squad.utils.logger import get_logger
 
 logger = get_logger("db_init")
 
-# Define the path to the database file relative to this script's location
-# Assuming this file is in utils/, data/ is ../data/
-DB_DIR = Path(__file__).parent.parent / "data"
-DB_PATH = DB_DIR / "swarm_squad.db"
+
+# Define multiple possible database locations to check
+# This ensures the database works in both development and installed modes
+def get_db_path():
+    """Get the appropriate database path based on environment"""
+    # Try to load .env file from several possible locations
+    possible_env_locations = [
+        Path.cwd() / ".env",
+        Path.cwd().parent / ".env",
+        Path.home() / ".swarm_squad" / ".env",
+        Path(__file__).parent.parent.parent.parent / ".env",  # project root
+        Path(__file__).parent.parent / ".env",  # src/swarm_squad
+    ]
+
+    for env_path in possible_env_locations:
+        if env_path.exists():
+            logger.debug(f"Loading environment from {env_path}")
+            load_dotenv(dotenv_path=env_path)
+            break
+
+    # Check for DATABASE_PATH in environment variables
+    env_db_path = os.environ.get("DATABASE_PATH")
+    if env_db_path:
+        db_path = Path(env_db_path)
+        logger.debug(f"Using database path from environment: {db_path}")
+        return db_path
+
+    # Option 1: Relative to this file (development mode)
+    script_dir_db_path = Path(__file__).parent.parent / "data" / "swarm_squad.db"
+
+    # Option 2: User's home directory
+    home_db_path = Path.home() / ".swarm_squad" / "swarm_squad.db"
+
+    # Try the options in order and use the first one that exists
+    # If none exist, default to the home_db_path
+    if script_dir_db_path.exists():
+        logger.debug(f"Using existing database at {script_dir_db_path}")
+        return script_dir_db_path
+
+    # Create home directory if it doesn't exist
+    if not home_db_path.parent.exists():
+        home_db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    logger.debug(f"Creating/using database at {home_db_path}")
+    return home_db_path
+
+
+# Get the DB path
+DB_PATH = get_db_path()
+DB_DIR = DB_PATH.parent
 
 TABLE_SCHEMAS = {
     "agent": """

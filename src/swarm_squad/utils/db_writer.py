@@ -1,14 +1,18 @@
 import sqlite3
 
+from swarm_squad.utils.db_init import get_db_path
 from swarm_squad.utils.logger import get_logger
 
 # Create module logger
 logger = get_logger("db_writer")
 
+# Get the database path
+DB_PATH = get_db_path()
+
 
 def agent_tbl_writer(df):
     # Write the data to the SQLite database
-    conn = sqlite3.connect("./src/swarm_squad/data/swarm_squad.db")
+    conn = sqlite3.connect(DB_PATH)
     df.to_sql("agent", conn, if_exists="replace", index=False)
     conn.close()
 
@@ -17,7 +21,7 @@ def agent_tbl_writer(df):
 
 def mission_tbl_writer(df):
     # Write the data to the SQLite database
-    conn = sqlite3.connect("./src/swarm_squad/data/swarm_squad.db")
+    conn = sqlite3.connect(DB_PATH)
     df.to_sql("mission", conn, if_exists="replace", index=False)
     conn.close()
 
@@ -26,7 +30,7 @@ def mission_tbl_writer(df):
 
 def system_tbl_writer(df):
     # Write the data to the SQLite database
-    conn = sqlite3.connect("./src/swarm_squad/data/swarm_squad.db")
+    conn = sqlite3.connect(DB_PATH)
     df.to_sql("system", conn, if_exists="replace", index=False)
     conn.close()
 
@@ -35,7 +39,7 @@ def system_tbl_writer(df):
 
 def telemetry_tbl_writer(df):
     # Write the data to the SQLite database
-    conn = sqlite3.connect("./src/swarm_squad/data/swarm_squad.db")
+    conn = sqlite3.connect(DB_PATH)
     df.to_sql("telemetry", conn, if_exists="replace", index=False)
     conn.close()
 
