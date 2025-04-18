@@ -25,10 +25,11 @@ class DroneWebsocketServer:
         self.port = port
         self.connected_clients = set()
         self.last_update = 0
-        self.cache_ttl = 0.1  # 100ms cache TTL
+        self.cache_ttl = 0.05  # 50ms cache TTL for smoother updates
         self.stop_event = asyncio.Event()
         self.server = None
         self._tasks = []
+        self._last_drone_data = None  # Store last successful data
 
     @lru_cache(maxsize=1)
     def get_drone_data(self, timestamp):
@@ -38,7 +39,18 @@ class DroneWebsocketServer:
             df = pd.read_sql_query("SELECT * from telemetry", conn)
             conn.close()
 
-            return {
+            if df.empty:
+                logger.warning("Telemetry table is empty")
+                return self._last_drone_data or {
+                    "droneCoords": [],
+                    "droneNames": [],
+                    "dronePitch": [],
+                    "droneYaw": [],
+                    "droneRoll": [],
+                    "timestamp": datetime.now().isoformat(),
+                }
+
+            data = {
                 "droneCoords": [[row["Location"]] for _, row in df.iterrows()],
                 "droneNames": [
                     [f"Drone {row['Agent Name']}"] for _, row in df.iterrows()
@@ -48,10 +60,15 @@ class DroneWebsocketServer:
                 "droneRoll": [[row["Roll"]] for _, row in df.iterrows()],
                 "timestamp": datetime.now().isoformat(),
             }
+
+            # Store last successful data
+            self._last_drone_data = data
+            return data
+
         except Exception as e:
             logger.error(f"Error getting drone data: {e}")
-            # Return empty data on error
-            return {
+            # Return last known data or empty data if not available
+            return self._last_drone_data or {
                 "droneCoords": [],
                 "droneNames": [],
                 "dronePitch": [],
@@ -61,31 +78,67 @@ class DroneWebsocketServer:
             }
 
     async def broadcast_drone_data(self):
+        error_count = 0
+        max_errors = 3
+        recovery_delay = 0.2  # 200ms
+
         while not self.stop_event.is_set():
             try:
                 current_time = time()
                 if current_time - self.last_update >= self.cache_ttl:
                     drone_data = self.get_drone_data(
-                        int(current_time * 10)
-                    )  # Round to 100ms
+                        int(current_time * 20)  # Round to 50ms
+                    )
                     self.last_update = current_time
 
                     if self.connected_clients:
-                        websockets_coros = [
-                            client.send(json.dumps(drone_data))
-                            for client in self.connected_clients
-                        ]
-                        await asyncio.gather(*websockets_coros, return_exceptions=True)
+                        # Create a list to store tasks
+                        tasks = []
+                        for client in list(self.connected_clients):
+                            try:
+                                # Create a task for each client
+                                tasks.append(client.send(json.dumps(drone_data)))
+                            except Exception as e:
+                                logger.error(f"Error creating send task: {e}")
+                                # Don't break the whole loop for a single client error
+                                continue
+
+                        # Execute all send tasks together
+                        if tasks:
+                            results = await asyncio.gather(
+                                *tasks, return_exceptions=True
+                            )
+                            # Check for exceptions in results
+                            for result in results:
+                                if isinstance(result, Exception):
+                                    error_count += 1
+                                    logger.error(f"Error in client send: {result}")
+
+                            # Reset error count on success
+                            if not any(isinstance(r, Exception) for r in results):
+                                error_count = 0
+
+                # If we've had too many errors in a row, wait a bit longer
+                if error_count >= max_errors:
+                    logger.warning(f"Too many errors ({error_count}), increasing delay")
+                    await asyncio.sleep(recovery_delay)
+                    error_count = 0  # Reset after recovery
+                else:
+                    await asyncio.sleep(0.05)  # 50ms update rate
 
             except Exception as e:
                 logger.error(f"Error broadcasting data: {e}")
-
-            await asyncio.sleep(0.1)  # 100ms update rate
+                error_count += 1
+                await asyncio.sleep(0.1)  # Slightly longer sleep on error
 
     async def handle_client(self, websocket):
         logger.debug("New client connected")
         self.connected_clients.add(websocket)
         try:
+            # Send initial data immediately to new client
+            if self._last_drone_data:
+                await websocket.send(json.dumps(self._last_drone_data))
+
             await websocket.wait_closed()
         except ConnectionClosedError:
             logger.error("Client connection closed unexpectedly")

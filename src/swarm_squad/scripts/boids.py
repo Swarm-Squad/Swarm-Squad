@@ -1,3 +1,5 @@
+import time  # Import time module for controlled updates
+
 import matplotlib
 import numpy as np
 
@@ -39,6 +41,10 @@ class Flock:
         self.ref_lon = -81.050  # center longitude
         self.min_alt = 30
         self.max_alt = 100
+        # Last data update time
+        self.last_data_update = time.time()
+        # Minimum time between websocket updates (seconds)
+        self.update_interval = 0.05  # 50ms
 
     def meters_to_latlon(self, position):
         # Convert meters to lat/lon/alt
@@ -90,30 +96,49 @@ class Flock:
 
             boid.position += boid.velocity * 0.5
 
-        # Create database entries with converted coordinates
-        data = {
-            "Agent Name": range(1, len(self.boids) + 1),
-            "Location": [
-                f"{pos[1]}, {pos[0]}, {pos[2]}"
-                for pos in [self.meters_to_latlon(boid.position) for boid in self.boids]
-            ],
-            "Destination": [
-                f"{pos[0]}, {pos[1] + random.uniform(0.0001, 0.001)}, 50"
-                for pos in [self.meters_to_latlon(boid.position) for boid in self.boids]
-            ],
-            "Altitude": [
-                self.meters_to_latlon(boid.position)[2] for boid in self.boids
-            ],
-            "Pitch": [45 for _ in self.boids],
-            "Yaw": [0 for _ in self.boids],
-            "Roll": [0 for _ in self.boids],
-            "Airspeed/Velocity": [np.linalg.norm(boid.velocity) for boid in self.boids],
-            "Acceleration": [0 for _ in self.boids],
-            "Angular Velocity": [0 for _ in self.boids],
-        }
-        telemetry_df = pd.DataFrame(data)
-        telemetry_tbl_writer(telemetry_df)
-        ws_writer(data)
+        # Only update data at controlled intervals to prevent flickering
+        current_time = time.time()
+        if current_time - self.last_data_update >= self.update_interval:
+            # Create database entries with converted coordinates
+            data = {
+                "Agent Name": range(1, len(self.boids) + 1),
+                "Location": [
+                    f"{pos[1]}, {pos[0]}, {pos[2]}"
+                    for pos in [
+                        self.meters_to_latlon(boid.position) for boid in self.boids
+                    ]
+                ],
+                "Destination": [
+                    f"{pos[0]}, {pos[1] + random.uniform(0.0001, 0.001)}, 50"
+                    for pos in [
+                        self.meters_to_latlon(boid.position) for boid in self.boids
+                    ]
+                ],
+                "Altitude": [
+                    self.meters_to_latlon(boid.position)[2] for boid in self.boids
+                ],
+                "Pitch": [45 for _ in self.boids],
+                "Yaw": [0 for _ in self.boids],
+                "Roll": [0 for _ in self.boids],
+                "Airspeed/Velocity": [
+                    np.linalg.norm(boid.velocity) for boid in self.boids
+                ],
+                "Acceleration": [0 for _ in self.boids],
+                "Angular Velocity": [0 for _ in self.boids],
+            }
+
+            try:
+                # Update telemetry table in database
+                telemetry_df = pd.DataFrame(data)
+                telemetry_tbl_writer(telemetry_df)
+
+                # Send data over websocket
+                ws_writer(data)
+
+                # Update last update time
+                self.last_data_update = current_time
+            except Exception as e:
+                print(f"Error updating data: {e}")
 
         return colors
 
@@ -267,16 +292,33 @@ def update(val):
 
 boids_slider.on_changed(update)
 
-ani = FuncAnimation(fig, animate, frames=500, interval=100)
+# Set animation interval to match update frequency
+ani = FuncAnimation(fig, animate, frames=500, interval=50)  # Changed from 100ms to 50ms
 
 plt.show()
 
 # Save the id of the figure
 fig_id = fig.number
 
-# Update the boids and write their data to the database every half second
+# Use a more controlled update loop
+update_interval = 1.0 / 60.0  # 16.7ms (60fps)
+last_update = time.time()
+
+# Update the boids at a consistent rate
 while True:
+    current_time = time.time()
+
     # If the figure doesn't exist, break the loop
     if not plt.fignum_exists(fig_id):
         break
-    flock.update_boids(cohesion_slider.val, separation_slider.val, alignment_slider.val)
+
+    # Only update at a consistent rate
+    if current_time - last_update >= update_interval:
+        if running:
+            flock.update_boids(
+                cohesion_slider.val, separation_slider.val, alignment_slider.val
+            )
+        last_update = current_time
+
+    # Small sleep to prevent CPU hogging
+    time.sleep(0.01)

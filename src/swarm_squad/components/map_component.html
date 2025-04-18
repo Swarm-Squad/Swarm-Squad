@@ -78,10 +78,20 @@
 
         // Declare drones at a higher scope
         let drones = {};
+        let droneUUIDs = {}; // Track unique IDs for drones
+        let pendingRemovals = []; // Track drones pending removal
         let websocket = null;
         let threebox_initialized = false; // Add this flag to track when threebox is ready
+        let lastCleanupTime = 0; // Track when we last performed a full cleanup
+        let cleanupInterval = 5000; // Full cleanup every 5 seconds
 
-        // Add connection status indicator
+        // Add this variable for improved reconnection handling
+        let reconnectDelay = 1000; // Start with 1 second
+        let maxReconnectDelay = 5000; // Max of 5 seconds
+        let lastMessageTime = Date.now();
+        let messageTimeout = 3000; // 3 seconds timeout
+
+        // Connection status with debug info
         const connectionStatus = document.createElement('div');
         connectionStatus.style.position = 'absolute';
         connectionStatus.style.top = '10px';
@@ -135,22 +145,357 @@
             document.getElementById('style-menu').style.width = statusWidth + 'px';
         });
 
-        // Initialize WebSocket connection immediately
-        const connectWebSocket = () => {
-            console.log('[INFO] Attempting to connect to WebSocket server...');
-            const ws = new WebSocket('ws://localhost:8051');
+        // Add a variable to track the current scene state
+        let lastSceneReset = 0;
+        let sceneResetInterval = 60000; // Reset every 60 seconds (increased from 15)
+        let isFirstLoad = true; // Track first load
+
+        // Add a flag to prevent multiple overlapping operations
+        let isProcessingDrones = false;
+
+        // Add a comprehensive cleanup function that can be called any time
+        function performFullCleanup() {
+            if (!window.tb || !threebox_initialized) return;
+
+            console.log("[INFO] Performing full scene cleanup");
+
+            try {
+                // First, process any pending removals
+                if (pendingRemovals.length > 0) {
+                    pendingRemovals.forEach(drone => {
+                        try {
+                            // Full removal process
+                            if (drone && window.tb) {
+                                // Explicitly remove from scene
+                                window.tb.remove(drone);
+
+                                // Force dispose geometries and materials
+                                if (drone.geometry) drone.geometry.dispose();
+                                if (drone.material) {
+                                    if (Array.isArray(drone.material)) {
+                                        drone.material.forEach(m => m.dispose());
+                                    } else {
+                                        drone.material.dispose();
+                                    }
+                                }
+
+                                // Remove from parent if still attached
+                                if (drone.parent) drone.parent.remove(drone);
+                            }
+                        } catch (e) {
+                            console.error('[ERROR] Failed to remove drone from pending queue:', e);
+                        }
+                    });
+                    pendingRemovals = [];
+                }
+
+                // Force complete scene scan - look for ANY object that might be a drone
+                // This is more aggressive than previous approach
+                if (window.tb && window.tb.world) {
+                    // Get ALL objects in the scene recursively
+                    const allObjects = [];
+                    window.tb.world.traverse(object => {
+                        // Look for any object that might be a drone or has model components
+                        if (object &&
+                            (object.name && (object.name.includes('drone') || !isNaN(parseInt(object.name)) ||
+                                object.name.includes('Drone')) ||
+                                (object.userData && object.userData.model))) {
+                            allObjects.push(object);
+                        }
+                    });
+
+                    // Get only the active drone UUIDs we want to keep
+                    const activeUUIDs = new Set();
+                    Object.keys(drones).forEach(name => {
+                        if (drones[name] && drones[name].uuid) {
+                            activeUUIDs.add(drones[name].uuid);
+                            // Also add children UUIDs that belong to this drone
+                            if (drones[name].children) {
+                                drones[name].children.forEach(child => {
+                                    if (child.uuid) activeUUIDs.add(child.uuid);
+                                });
+                            }
+                        }
+                    });
+
+                    // Find and clean up orphaned objects
+                    const orphanedObjects = allObjects.filter(obj =>
+                        obj.uuid && !activeUUIDs.has(obj.uuid)
+                    );
+
+                    if (orphanedObjects.length > 0) {
+                        console.log(`[WARN] Found ${orphanedObjects.length} orphaned objects in the scene`);
+                        orphanedObjects.forEach(obj => {
+                            try {
+                                // Deep cleanup
+                                if (obj.parent) obj.parent.remove(obj);
+                                if (obj.geometry) obj.geometry.dispose();
+                                if (obj.material) {
+                                    if (Array.isArray(obj.material)) {
+                                        obj.material.forEach(m => m.dispose());
+                                    } else {
+                                        obj.material.dispose();
+                                    }
+                                }
+
+                                // Also try the threebox remove method
+                                if (window.tb.remove) {
+                                    window.tb.remove(obj);
+                                }
+                            } catch (e) {
+                                console.error('[ERROR] Failed to remove orphaned object:', e);
+                            }
+                        });
+                    }
+
+                    // Force a Three.js render update and clear caches
+                    if (window.tb.renderer) {
+                        window.tb.renderer.renderLists.dispose();
+                    }
+                }
+
+                // Update last cleanup time
+                lastCleanupTime = Date.now();
+
+                // Force a refresh of the scene
+                if (window.tb.update) {
+                    window.tb.update();
+                }
+            } catch (error) {
+                console.error("[ERROR] Error during full cleanup:", error);
+            }
+        }
+
+        // Add a more aggressive "nuclear option" to completely reset the scene
+        function resetEntireScene() {
+            if (!window.tb || !threebox_initialized) return;
+            if (isProcessingDrones) {
+                console.log("[WARN] Skipping scene reset - drone processing in progress");
+                return;
+            }
+
+            console.log("[INFO] RESETTING ENTIRE SCENE");
+
+            try {
+                isProcessingDrones = true;
+
+                // Store current drone data for recreation
+                const currentDroneData = Object.keys(drones).map(name => {
+                    const drone = drones[name];
+                    return {
+                        name: name,
+                        coordinates: drone.coordinates ? [...drone.coordinates] : null,
+                        rotation: drone.currentRotation ? { ...drone.currentRotation } : { x: 45, y: 0, z: 0 }
+                    };
+                });
+
+                console.log(`[INFO] Stored ${currentDroneData.length} drones for recreation`);
+
+                // Clear tracking objects BEFORE scene cleanup to prevent race conditions
+                const oldDrones = { ...drones };
+                drones = {};
+                droneUUIDs = {};
+                pendingRemovals = [];
+
+                // Only remove objects that are actually drones, not the entire scene
+                const dronesToRemove = [];
+                if (window.tb && window.tb.world) {
+                    window.tb.world.traverse(object => {
+                        // Look specifically for drone objects
+                        if (object &&
+                            (object.name && (
+                                object.name.includes('drone') ||
+                                !isNaN(parseInt(object.name)) ||
+                                object.name.includes('Drone')
+                            ))) {
+                            dronesToRemove.push(object);
+                        }
+                    });
+
+                    // Remove drones in a separate loop to avoid traversal issues
+                    if (dronesToRemove.length > 0) {
+                        console.log(`[INFO] Removing ${dronesToRemove.length} drone objects from scene`);
+                        for (const obj of dronesToRemove) {
+                            try {
+                                // Remove from parent
+                                if (obj.parent) obj.parent.remove(obj);
+
+                                // Dispose resources
+                                if (obj.geometry) obj.geometry.dispose();
+                                if (obj.material) {
+                                    if (Array.isArray(obj.material)) {
+                                        obj.material.forEach(m => m.dispose());
+                                    } else {
+                                        obj.material.dispose();
+                                    }
+                                }
+
+                                // Try threebox remove
+                                if (window.tb.remove) {
+                                    window.tb.remove(obj);
+                                }
+                            } catch (e) {
+                                console.error('[ERROR] Failed to remove object during reset:', e);
+                            }
+                        }
+                    } else {
+                        console.log("[WARN] No drone objects found to remove");
+                    }
+                }
+
+                // Update timestamp
+                lastSceneReset = Date.now();
+
+                // Force a scene update
+                if (window.tb && window.tb.update) {
+                    window.tb.update();
+                }
+
+                // Recreate drones with a delay
+                console.log(`[INFO] Will recreate ${currentDroneData.length} drones after reset`);
+                setTimeout(() => {
+                    try {
+                        if (currentDroneData.length > 0) {
+                            console.log(`[INFO] Recreating ${currentDroneData.length} drones after reset`);
+                            let recreationPromises = [];
+
+                            // Recreate each drone
+                            currentDroneData.forEach(droneData => {
+                                if (droneData.coordinates) {
+                                    const promise = createNewDrone(
+                                        droneData.name,
+                                        droneData.coordinates,
+                                        droneData.rotation
+                                    );
+                                    if (promise) recreationPromises.push(promise);
+                                }
+                            });
+
+                            // Once all drones are recreated
+                            Promise.all(recreationPromises)
+                                .then(newDrones => {
+                                    console.log(`[INFO] Successfully recreated ${newDrones.filter(Boolean).length} drones`);
+                                })
+                                .catch(err => {
+                                    console.error("[ERROR] Error recreating drones:", err);
+                                })
+                                .finally(() => {
+                                    isProcessingDrones = false;
+                                });
+                        } else {
+                            isProcessingDrones = false;
+                        }
+                    } catch (e) {
+                        console.error("[ERROR] Error during drone recreation:", e);
+                        isProcessingDrones = false;
+                    }
+                }, 500);
+
+                isFirstLoad = false;
+            } catch (error) {
+                console.error("[ERROR] Error during scene reset:", error);
+                isProcessingDrones = false;
+            }
+        }
+
+        // Helper function to create a new drone
+        function createNewDrone(name, coordinates, rotation) {
+            if (!window.tb || !threebox_initialized) {
+                console.error("[ERROR] Cannot create drone - threebox not initialized");
+                return null;
+            }
+
+            try {
+                // Generate a UUID for this drone
+                const cleanName = String(name).replace('Drone ', '');
+                const uuid = 'drone_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + '_' + cleanName;
+                droneUUIDs[cleanName] = uuid;
+
+                var options = {
+                    obj: '../assets/models/drone.glb',
+                    type: 'gltf',
+                    scale: 0.5,
+                    units: 'meters',
+                    rotation: rotation || { x: 45, y: 0, z: 0 }
+                };
+
+                // Create a promise to handle the async nature of loadObj
+                return new Promise((resolve, reject) => {
+                    try {
+                        window.tb.loadObj(options, function (model) {
+                            try {
+                                let drone = model.setCoords(coordinates);
+                                drone.name = cleanName;
+                                drone.uuid = uuid; // Set custom UUID
+                                const formattedName = `Drone ${cleanName}`;
+
+                                drone.addTooltip(` ${formattedName}<br>
+                                (${coordinates[0].toFixed(6)}, ${coordinates[1].toFixed(6)}, ${coordinates[2].toFixed(1)})<br>
+                                P:${rotation.x.toFixed(1)}° Y:${rotation.y.toFixed(1)}° R:${rotation.z.toFixed(1)}°
+                                `, true);
+
+                                // Store coordinates and rotation for smooth transitions
+                                drone.targetCoords = coordinates;
+                                drone.currentRotation = { ...rotation };
+                                drone.targetRotation = { ...rotation };
+                                drone.missedUpdates = 0;
+                                drone.timestamp = Date.now();
+
+                                // Set up animations if available
+                                if (model.animations && model.animations.length > 0) {
+                                    drone.mixer = new THREE.AnimationMixer(model);
+                                    model.animations.forEach((animation) => {
+                                        let action = drone.mixer.clipAction(animation);
+                                        action.play();
+                                    });
+                                    drone.lastUpdate = Date.now();
+                                }
+
+                                // Add to scene and tracking
+                                window.tb.add(drone);
+                                drones[cleanName] = drone;
+                                resolve(drone);
+                            } catch (e) {
+                                console.error(`[ERROR] Error setting up drone ${cleanName}:`, e);
+                                reject(e);
+                            }
+                        });
+                    } catch (e) {
+                        console.error(`[ERROR] Error loading drone model for ${cleanName}:`, e);
+                        reject(e);
+                    }
+                });
+            } catch (error) {
+                console.error("[ERROR] Error creating drone:", error);
+                return null;
+            }
+        }
+
+        // Connection function with exponential backoff
+        function connectWebSocket() {
+            // Connect to the correct WebSocket server URL at port 8051
+            const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const host = location.hostname || 'localhost';
+            const ws = new WebSocket(`${protocol}//${host}:8051`);
 
             ws.onopen = () => {
                 console.log('[INFO] WebSocket connected');
                 connectionStatus.textContent = 'WebSocket: Connected';
-                connectionStatus.style.backgroundColor = '#98c379';
+                connectionStatus.style.backgroundColor = '#98C379';
+                // Reset reconnect delay on successful connection
+                reconnectDelay = 1000;
+                lastMessageTime = Date.now();
             };
 
             ws.onclose = () => {
                 console.log('[INFO] WebSocket disconnected. Reconnecting...');
                 connectionStatus.textContent = 'WebSocket: Disconnected';
                 connectionStatus.style.backgroundColor = '#e06c75';
-                setTimeout(connectWebSocket, 1000); // Reconnect after 1 second
+
+                // Implement exponential backoff for reconnection
+                setTimeout(connectWebSocket, reconnectDelay);
+                // Increase delay for next attempt (with max cap)
+                reconnectDelay = Math.min(reconnectDelay * 1.5, maxReconnectDelay);
             };
 
             ws.onerror = (error) => {
@@ -160,9 +505,50 @@
             };
 
             ws.onmessage = function (event) {
+                lastMessageTime = Date.now(); // Update last message time
+
                 try {
-                    console.log('[DEBUG] Received WebSocket message:', event.data.slice(0, 200) + '...');
                     const data = JSON.parse(event.data);
+
+                    // Exit early if no data or empty arrays
+                    if (!data || !data.droneCoords || data.droneCoords.length === 0) {
+                        console.log('[WARN] Empty data received, skipping update');
+                        return;
+                    }
+
+                    // Skip if we're currently processing drones or resetting
+                    if (isProcessingDrones) {
+                        console.log('[WARN] Skipping update - already processing drones');
+                        return;
+                    }
+
+                    // Check if we need to reset the scene - but don't do it too often
+                    const now = Date.now();
+                    if (now - lastSceneReset > sceneResetInterval) {
+                        // Only reset if we've gone a while without a reset
+                        resetEntireScene();
+                        // Allow a short delay for the scene to reset before processing new data
+                        setTimeout(() => processNewDroneData(data), 1000);
+                        return;
+                    }
+
+                    processNewDroneData(data);
+                } catch (error) {
+                    console.error('Error processing message:', error);
+                }
+            };
+
+            // Extract drone data processing to a separate function for clarity
+            function processNewDroneData(data) {
+                if (!window.tb || !threebox_initialized) {
+                    console.error("[ERROR] Cannot process drone data - threebox not initialized");
+                    return;
+                }
+
+                // Set processing flag to prevent overlapping operations
+                isProcessingDrones = true;
+
+                try {
                     let newDrones = {};
                     let newCoords = data.droneCoords;
                     let droneNames = data.droneNames;
@@ -170,94 +556,170 @@
                     let droneYaw = data.droneYaw;
                     let droneRoll = data.droneRoll;
 
-                    console.log('[DEBUG] Processing drones:', {
-                        droneCount: newCoords.length,
-                        firstDroneCoords: newCoords[0],
-                        firstDroneName: droneNames[0]
-                    });
+                    // Process pending removals before updating with new data
+                    if (pendingRemovals.length > 0 && window.tb) {
+                        console.log(`[INFO] Processing ${pendingRemovals.length} pending drone removals`);
+                        pendingRemovals.forEach(drone => {
+                            try {
+                                // Full removal process
+                                if (drone && window.tb) {
+                                    // Explicitly remove from scene
+                                    window.tb.remove(drone);
 
-                    if (window.tb && threebox_initialized) { // Only process if threebox is initialized and ready
-                        for (let i = 0; i < newCoords.length; i++) {
-                            let name = droneNames[i];
-                            let coords = newCoords[i][0].split(',').map(Number);
-                            console.log(`[DEBUG] Processing drone ${name}:`, coords);
-
-                            if (drones[name]) {
-                                // Update existing drone with lerp
-                                const drone = drones[name];
-                                const currentPos = drone.coordinates;
-
-                                // Store target position and rotation
-                                drone.targetCoords = coords;
-                                drone.targetRotation = {
-                                    x: dronePitch[i][0],
-                                    y: droneYaw[i][0],
-                                    z: droneRoll[i][0]
-                                };
-
-                                // Store current rotation for interpolation
-                                if (!drone.currentRotation) {
-                                    drone.currentRotation = {
-                                        x: dronePitch[i][0],
-                                        y: droneYaw[i][0],
-                                        z: droneRoll[i][0]
-                                    };
-                                }
-
-                                newDrones[name] = drone;
-                            } else if (window.tb) {
-                                // Add new drone
-                                var options = {
-                                    obj: '../assets/models/drone.glb',
-                                    type: 'gltf',
-                                    scale: 0.5,
-                                    units: 'meters',
-                                    rotation: { x: dronePitch[i][0], y: droneYaw[i][0], z: droneRoll[i][0] }
-                                };
-
-                                window.tb.loadObj(options, function (model) {
-                                    let drone = model.setCoords(coords);
-                                    drone.name = name;
-                                    drone.addTooltip(` ${name}<br>
-                                    (${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}, ${coords[2].toFixed(1)})<br>
-                                    P:${dronePitch[i][0].toFixed(1)}° Y:${droneYaw[i][0].toFixed(1)}° R:${droneRoll[i][0].toFixed(1)}°
-                                    `, true);
-
-                                    if (model.animations && model.animations.length > 0) {
-                                        drone.mixer = new THREE.AnimationMixer(model);
-                                        model.animations.forEach((animation) => {
-                                            let action = drone.mixer.clipAction(animation);
-                                            action.play();
-                                        });
-                                        drone.lastUpdate = Date.now();
+                                    // Force dispose geometries and materials
+                                    if (drone.geometry) drone.geometry.dispose();
+                                    if (drone.material) {
+                                        if (Array.isArray(drone.material)) {
+                                            drone.material.forEach(m => m.dispose());
+                                        } else {
+                                            drone.material.dispose();
+                                        }
                                     }
 
-                                    window.tb.add(drone);
-                                    newDrones[name] = drone;
-                                });
+                                    // Remove from parent if still attached
+                                    if (drone.parent) drone.parent.remove(drone);
+                                }
+                            } catch (e) {
+                                console.error('[ERROR] Failed to remove drone:', e);
                             }
-                        }
-
-                        // Remove drones that no longer exist
-                        for (let name in drones) {
-                            if (!newDrones[name] && window.tb) {
-                                window.tb.remove(drones[name]);
-                            }
-                        }
-
-                        // Update the outer drones reference
-                        drones = newDrones;
+                        });
+                        pendingRemovals = [];
                     }
+
+                    // First, mark all existing drones as candidates for removal
+                    const activeDroneNames = new Set();
+                    for (let i = 0; i < newCoords.length; i++) {
+                        if (droneNames[i] && droneNames[i][0]) {
+                            const cleanName = droneNames[i][0].replace('Drone ', '');
+                            activeDroneNames.add(cleanName);
+                        }
+                    }
+
+                    // Keep track of drone update promises
+                    let droneUpdatePromises = [];
+
+                    // Process all drones in the latest data
+                    for (let i = 0; i < newCoords.length; i++) {
+                        let name = droneNames[i];
+                        if (!name || !name[0]) {
+                            console.warn('[WARN] Invalid drone name at index', i);
+                            continue;
+                        }
+
+                        // Clean up the name format to ensure consistency
+                        const cleanName = name[0].replace('Drone ', '');
+                        const formattedName = `Drone ${cleanName}`;
+
+                        let coords;
+                        try {
+                            coords = newCoords[i][0].split(',').map(Number);
+                            // Validation check for coordinates
+                            if (coords.length !== 3 || coords.some(isNaN)) {
+                                console.warn('[WARN] Invalid coords for drone', name, coords);
+                                continue;
+                            }
+                        } catch (e) {
+                            console.error('[ERROR] Failed to parse coordinates for drone', name, e);
+                            continue;
+                        }
+
+                        // Get rotation values and ensure they're numeric
+                        const pitch = parseFloat(dronePitch[i][0]) || 0;
+                        const yaw = parseFloat(droneYaw[i][0]) || 0;
+                        const roll = parseFloat(droneRoll[i][0]) || 0;
+
+                        if (drones[cleanName]) {
+                            // Update existing drone with lerp
+                            const drone = drones[cleanName];
+
+                            // Reset missed updates counter since we got valid data
+                            drone.missedUpdates = 0;
+
+                            // Store target position and rotation
+                            drone.targetCoords = coords;
+                            drone.targetRotation = {
+                                x: pitch,
+                                y: yaw,
+                                z: roll
+                            };
+
+                            // Store current rotation for interpolation
+                            if (!drone.currentRotation) {
+                                drone.currentRotation = {
+                                    x: pitch,
+                                    y: yaw,
+                                    z: roll
+                                };
+                            }
+
+                            // Update the tooltip with latest data
+                            if (drone.updateTooltip) {
+                                drone.updateTooltip(` ${formattedName}<br>
+                                (${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}, ${coords[2].toFixed(1)})<br>
+                                P:${pitch.toFixed(1)}° Y:${yaw.toFixed(1)}° R:${roll.toFixed(1)}°
+                                `);
+                            }
+
+                            newDrones[cleanName] = drone;
+                        } else {
+                            // Create a new drone
+                            const rotation = { x: pitch, y: yaw, z: roll };
+                            const dronePromise = createNewDrone(cleanName, coords, rotation);
+                            if (dronePromise) {
+                                droneUpdatePromises.push(
+                                    dronePromise.then(drone => {
+                                        if (drone) newDrones[cleanName] = drone;
+                                        return drone;
+                                    })
+                                );
+                            }
+                        }
+                    }
+
+                    // Wait for all drone creations to complete
+                    Promise.all(droneUpdatePromises)
+                        .then(results => {
+                            // Update the main drones object with the newly processed drones
+                            // Keep any existing drones that we didn't process in this update
+                            for (let name in drones) {
+                                if (!newDrones[name]) {
+                                    newDrones[name] = drones[name];
+                                }
+                            }
+
+                            // Set the global drones object
+                            drones = newDrones;
+                        })
+                        .catch(err => {
+                            console.error("[ERROR] Error updating drones:", err);
+                        })
+                        .finally(() => {
+                            // Reset the processing flag
+                            isProcessingDrones = false;
+                        });
                 } catch (error) {
-                    console.error('Error processing message:', error);
+                    console.error("[ERROR] Error in processNewDroneData:", error);
+                    isProcessingDrones = false;
                 }
-            };
+            }
 
             return ws;
         };
 
         // Start connecting to WebSocket immediately
         websocket = connectWebSocket();
+
+        // Start a periodic check for message timeouts
+        setInterval(() => {
+            const now = Date.now();
+            if (now - lastMessageTime > messageTimeout) {
+                if (websocket.readyState === WebSocket.OPEN) {
+                    console.warn('[WARN] No messages received for', (now - lastMessageTime) / 1000, 'seconds');
+                    connectionStatus.textContent = 'WebSocket: No Data';
+                    connectionStatus.style.backgroundColor = '#E5C07B';  // Yellow for warning
+                }
+            }
+        }, 1000);
 
         // Initialize a map
         const map = new mapboxgl.Map({
@@ -305,6 +767,27 @@
                     'exaggeration': 1.5
                 });
 
+                // Wait longer before first scene reset to ensure everything is loaded
+                setTimeout(() => {
+                    console.log("[INFO] Running initial scene preparation");
+                    // Don't do a full reset on initial load, just clear any stale objects
+                    performFullCleanup();
+                }, 2000);
+
+                // Add less aggressive cleanup intervals
+                setInterval(function () {
+                    if (threebox_initialized && !isProcessingDrones) {
+                        performFullCleanup();
+                    }
+                }, 15000); // Run every 15 seconds (increased from 5)
+
+                // Add a less frequent scene reset (every 2 minutes)
+                setInterval(function () {
+                    if (threebox_initialized && window.tb && !isProcessingDrones) {
+                        resetEntireScene();
+                    }
+                }, 120000); // Every 2 minutes (increased from 30 seconds)
+
                 // Add the 3D layer if it doesn't exist
                 if (!map.getLayer('custom_layer')) {
                     map.addLayer({
@@ -341,7 +824,7 @@
                                 // Smooth position and rotation updates
                                 if (drone.targetCoords && drone.coordinates) {
                                     // Interpolation factor (adjust this value to control smoothing)
-                                    const lerpFactor = 0.1;
+                                    const lerpFactor = 0.2; // Increased for smoother animation
 
                                     // Interpolate position
                                     const newCoords = [
@@ -360,6 +843,16 @@
                                         };
                                         drone.setRotation(newRotation);
                                         drone.currentRotation = newRotation;
+                                    }
+
+                                    // Check if drone is too old (more than 60 seconds without updates)
+                                    if (drone.timestamp && now - drone.timestamp > 60000) {
+                                        console.log(`[WARN] Removing stale drone ${drone.name} (age: ${(now - drone.timestamp) / 1000}s)`);
+                                        pendingRemovals.push(drone);
+                                        delete drones[drone.name];
+                                        if (droneUUIDs[drone.name]) {
+                                            delete droneUUIDs[drone.name];
+                                        }
                                     }
                                 }
                             });
@@ -382,11 +875,14 @@
         document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('style-selector').addEventListener('change', function () {
                 const previousDrones = drones; // Store current drone data
+                const previousUUIDs = droneUUIDs; // Store UUIDs too
                 drones = {};
+                droneUUIDs = {};
+                pendingRemovals = [];
                 threebox_initialized = false; // Reset initialization flag
-                
+
                 map.setStyle(this.value);
-                
+
                 // Listen for style load event to re-add custom layers
                 map.once('style.load', function () {
                     // Re-add terrain
@@ -424,6 +920,11 @@
                                 console.log('[INFO] Reloading drones after style change');
                                 Object.entries(previousDrones).forEach(([name, oldDrone]) => {
                                     if (oldDrone.coordinates) {
+                                        // Reuse the previous UUID if available
+                                        if (previousUUIDs[name]) {
+                                            droneUUIDs[name] = previousUUIDs[name];
+                                        }
+
                                         var options = {
                                             obj: '../assets/models/drone.glb',
                                             type: 'gltf',
@@ -435,16 +936,7 @@
                                         window.tb.loadObj(options, function (model) {
                                             let drone = model.setCoords(oldDrone.coordinates);
                                             drone.name = name;
-
-                                            if (oldDrone.targetCoords) {
-                                                drone.targetCoords = oldDrone.targetCoords;
-                                            }
-
-                                            if (oldDrone.targetRotation) {
-                                                drone.targetRotation = oldDrone.targetRotation;
-                                                drone.currentRotation = oldDrone.currentRotation;
-                                            }
-
+                                            drone.uuid = droneUUIDs[name];
                                             drone.addTooltip(` ${name}<br>
                                             (${oldDrone.coordinates[0].toFixed(6)}, ${oldDrone.coordinates[1].toFixed(6)}, ${oldDrone.coordinates[2].toFixed(1)})<br>
                                             P:${(oldDrone.currentRotation?.x || 0).toFixed(1)}° Y:${(oldDrone.currentRotation?.y || 0).toFixed(1)}° R:${(oldDrone.currentRotation?.z || 0).toFixed(1)}°
@@ -479,7 +971,7 @@
                                 // Smooth position and rotation updates
                                 if (drone.targetCoords && drone.coordinates) {
                                     // Interpolation factor (adjust this value to control smoothing)
-                                    const lerpFactor = 0.1;
+                                    const lerpFactor = 0.15; // Increased from 0.1 for smoother animation
 
                                     // Interpolate position
                                     const newCoords = [
@@ -506,7 +998,7 @@
                             }
                         }
                     });
-                    
+
                     // At the end of initialization, mark as ready
                     threebox_initialized = true;
                 });
