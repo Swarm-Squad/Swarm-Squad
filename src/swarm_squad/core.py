@@ -5,7 +5,10 @@ Core application setup for Swarm Squad Dash app.
 import atexit
 import os
 import signal
+import socket
+import subprocess
 import sys
+import time
 
 import dash
 import dash_mantine_components as dmc
@@ -25,11 +28,123 @@ app = None
 ws_manager = None
 
 
+def is_port_in_use(port, host="localhost"):
+    """Check if the port is already in use"""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(1)
+    result = sock.connect_ex((host, port))
+    sock.close()
+
+    if result == 0:
+        # Connection succeeded, port is in use
+        return True
+    else:
+        # Connection failed, port is free
+        return False
+
+
+def force_release_port(port, host="localhost"):
+    """Force release a port by finding and killing the process using it"""
+    # First try to connect to check if something is listening
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(1)
+    result = sock.connect_ex((host, port))
+    sock.close()
+
+    if result == 0:  # Port is in use
+        logger.debug(f"Port {port} is confirmed to be in use")
+        try:
+            # Try multiple methods to kill the process using the port (Linux only)
+            try:
+                # First try fuser (commonly available)
+                try:
+                    logger.info(
+                        f"Attempting to kill process using port {port} with fuser"
+                    )
+                    os.system(f"fuser -k {port}/tcp >/dev/null 2>&1")
+                except Exception:
+                    pass
+
+                # Try lsof as an alternative
+                try:
+                    logger.info(
+                        f"Attempting to find and kill process using port {port} with lsof"
+                    )
+                    process = subprocess.run(
+                        ["lsof", "-i", f":{port}", "-t"],
+                        capture_output=True,
+                        text=True,
+                    )
+                    if process.stdout.strip():
+                        for pid in process.stdout.strip().split("\n"):
+                            if pid:
+                                os.system(f"kill -9 {pid} >/dev/null 2>&1")
+                                logger.info(f"Killed process {pid} using port {port}")
+                except Exception:
+                    pass
+
+                # Try netstat as another alternative
+                try:
+                    logger.info(
+                        f"Attempting to find and kill process using port {port} with netstat"
+                    )
+                    process = subprocess.run(
+                        ["netstat", "-tlnp"], capture_output=True, text=True
+                    )
+                    for line in process.stdout.split("\n"):
+                        if f":{port}" in line and "LISTEN" in line:
+                            parts = line.split()
+                            for part in parts:
+                                if "/" in part:
+                                    pid = part.split("/")[0]
+                                    os.system(f"kill -9 {pid} >/dev/null 2>&1")
+                                    logger.info(
+                                        f"Killed process {pid} using port {port}"
+                                    )
+                except Exception:
+                    pass
+
+            except Exception as e:
+                logger.warning(f"Could not kill process using port {port}: {e}")
+
+            # Wait a moment to allow the port to be released
+            time.sleep(1)
+
+            # Check again if the port is in use
+            check_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            check_sock.settimeout(1)
+            check_result = check_sock.connect_ex((host, port))
+            check_sock.close()
+
+            if check_result == 0:
+                logger.warning(f"Port {port} is still in use after kill attempts")
+                return False
+            else:
+                logger.info(f"Successfully released port {port}")
+                return True
+
+        except Exception as e:
+            logger.error(f"Could not release port {port}: {e}")
+            return False
+    else:
+        logger.debug(f"Port {port} is already free")
+        return True
+
+
 def create_app():
     """
     Factory function to create and configure the Dash application instance.
     """
     global app, ws_manager
+
+    # Check if Dash port is already in use and attempt to release it
+    if os.environ.get("WERKZEUG_RUN_MAIN") != "true":
+        if is_port_in_use(8050):
+            logger.warning("Dash port 8050 is already in use, attempting to release it")
+            if not force_release_port(8050):
+                logger.error(
+                    "Failed to release port 8050. The application may fail to start."
+                )
 
     # Initialize WebSocket manager (singleton)
     ws_manager = WebSocketManager()
@@ -45,6 +160,8 @@ def create_app():
             logger.info(f"Signal {sig} received, cleaning up resources...")
             if ws_manager:
                 ws_manager.cleanup_websocket(force=True)
+            # Also ensure the Dash port is released
+            force_release_port(8050)
             sys.exit(0)
 
         # Register the signal handlers
@@ -53,6 +170,8 @@ def create_app():
 
         # Register WebSocket cleanup via atexit
         atexit.register(ws_manager.cleanup_websocket)
+        # Register Dash port cleanup via atexit
+        atexit.register(lambda: force_release_port(8050))
     else:
         logger.debug("Skipping signal/atexit registration in reloader process.")
     # -------------------------------------------------------------------

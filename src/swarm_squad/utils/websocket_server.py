@@ -30,6 +30,9 @@ class DroneWebsocketServer:
         self.server = None
         self._tasks = []
         self._last_drone_data = None  # Store last successful data
+        self._telemetry_was_empty = (
+            False  # Track telemetry empty state to avoid repetitive logs
+        )
 
     @lru_cache(maxsize=1)
     def get_drone_data(self, timestamp):
@@ -40,7 +43,10 @@ class DroneWebsocketServer:
             conn.close()
 
             if df.empty:
-                logger.warning("Telemetry table is empty")
+                # Only log warning if this is a state change
+                if not self._telemetry_was_empty:
+                    logger.warning("Telemetry table is empty")
+                    self._telemetry_was_empty = True
                 return self._last_drone_data or {
                     "droneCoords": [],
                     "droneNames": [],
@@ -49,6 +55,11 @@ class DroneWebsocketServer:
                     "droneRoll": [],
                     "timestamp": datetime.now().isoformat(),
                 }
+            else:
+                # Reset empty state flag when data is found
+                if self._telemetry_was_empty:
+                    logger.info("Telemetry data is now available")
+                    self._telemetry_was_empty = False
 
             data = {
                 "droneCoords": [[row["Location"]] for _, row in df.iterrows()],

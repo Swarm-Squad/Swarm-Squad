@@ -4,6 +4,8 @@ Swarm Squad Application Entry Point.
 Handles command-line interface routing and application startup.
 """
 
+import atexit
+import signal
 import sys
 
 from swarm_squad.utils.logger import get_logger
@@ -29,6 +31,31 @@ def main():
     """
     logger.debug("Application entry point reached.")
     exit_code = 1  # Default to error exit code
+
+    # Register a cleanup function to ensure resources are released
+    def cleanup_resources():
+        try:
+            from swarm_squad.core import force_release_port
+
+            # Force release the Dash and WebSocket ports
+            logger.debug("Final cleanup: Ensuring ports are released")
+            force_release_port(8050)  # Dash port
+            force_release_port(8051)  # WebSocket port
+        except Exception as e:
+            logger.error(f"Error during final cleanup: {e}")
+
+    # Register cleanup with atexit
+    atexit.register(cleanup_resources)
+
+    # Register signal handlers for graceful termination
+    def signal_handler(sig, frame):
+        logger.info(f"Signal {sig} received, performing cleanup...")
+        cleanup_resources()
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
     try:
         # NOTE: create_app is implicitly called within cli.command for webui
         # It initializes the app and ws_manager needed by the commands.
@@ -55,7 +82,8 @@ def main():
 
     finally:
         logger.debug(f"Application exiting with code {exit_code}.")
-        # WebSocket cleanup is handled by atexit registered in core.create_app
+        # Perform cleanup explicitly before exiting
+        cleanup_resources()
 
     return exit_code
 
