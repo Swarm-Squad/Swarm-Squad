@@ -1,3 +1,3 @@
 """
-Command-line interface for Swarm Squad.
+Command-line interface commands for Swarm Squad.
 """
