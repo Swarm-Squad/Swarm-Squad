@@ -20,7 +20,6 @@ layout = html.Div(
         html.Div(className="illumination-2"),
         html.Div(className="illumination-3"),
         html.Div(className="stars"),
-        # Text content - adjusted position
         dmc.Container(
             [
                 dmc.Stack(
@@ -83,13 +82,11 @@ layout = html.Div(
             fluid=True,
             style={"height": "100vh", "position": "relative"},
         ),
-        # Add the boids.js script here
-        html.Script(src="/assets/js/p5.js"),
         html.Script(src="/assets/js/boids.js"),
     ],
     style={
         "minHeight": "100vh",
         "position": "relative",
         "overflow": "hidden",
-    },  # Removed background color
+    },
 )
