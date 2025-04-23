@@ -7,7 +7,7 @@ dash.register_page(
     __name__,
     path="/",
     order=0,  # First page
-    image="favicon.ico",
+    image="favicon.png",
     title="Home | Swarm Squad",
     description="Explore the world of multi-agent systems and swarm intelligence through "
     "interactive simulations and visualizations",

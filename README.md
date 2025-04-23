@@ -1,6 +1,6 @@
 <div align="center">
    <a href="https://github.com/Sang-Buster/Swarm-Squad">
-      <img src="/src/swarm_squad//assets/favicon.ico" width=20% alt="logo">
+      <img src="/src/swarm_squad//assets/favicon.png" width=20% alt="logo">
    </a>   
    <h1>Swarm Squad</h1>
    <h5>A simulation framework for multi-agent systems.</h5>
@@ -158,7 +158,8 @@ swarm-squad --help
  ┃ ┃ ┃ ┣ 📂css                      // CSS files
  ┃ ┃ ┃ ┣ 📂js                       // JavaScript files
  ┃ ┃ ┃ ┣ 📂models                   // Model files
- ┃ ┃ ┃ ┗ 📄favicon.ico              // Favicon
+ ┃ ┃ ┃ ┣ 📄favicon.ico              // Favicon
+ ┃ ┃ ┃ ┗ 📄favicon.png              // Favicon
  ┃ ┃ ┣ 📂cli                        // CLI commands
  ┃ ┃ ┣ 📂components                 // Reusable UI components
  ┃ ┃ ┣ 📂data                       // Database files
