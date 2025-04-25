@@ -1,6 +1,6 @@
 [project]
 name = "swarm-squad"
-version = "0.1.5"
+version = "0.1.6"
 description = "Swarm Squad: A simulation framework for multi-agent systems."
 authors = [{ name = "Sang Buster", email = "hello@singsongaftermath.com" }]
 readme = "README.md"
@@ -14,9 +14,7 @@ dependencies = [
     "flask-cors>=5.0.1",
     "matplotlib>=3.10.1",
     "pandas>=2.2.3",
-    "psutil>=7.0.0",
     "pyqt5>=5.15.11",
-    "pyside2>=5.15.2.1",
     "python-dotenv>=1.1.0",
     "websockets>=15.0.1",
 ]

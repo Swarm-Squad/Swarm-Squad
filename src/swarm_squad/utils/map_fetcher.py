@@ -42,7 +42,7 @@ def load_mapbox_token():
             elif env_path.exists():
                 load_dotenv(env_path)
                 env_loaded = True
-                logger.debug(f"Loaded environment from {env_path}")
+                logger.info(f"Loaded environment from {env_path}")
                 break
         except Exception as e:
             logger.debug(f"Error loading {env_path}: {e}")
