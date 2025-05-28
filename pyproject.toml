@@ -1,6 +1,6 @@
 [project]
 name = "swarm-squad"
-version = "0.1.6"
+version = "0.1.7"
 description = "Swarm Squad: A simulation framework for multi-agent systems."
 authors = [{ name = "Sang Buster", email = "hello@singsongaftermath.com" }]
 readme = "README.md"

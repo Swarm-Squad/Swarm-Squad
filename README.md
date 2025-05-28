@@ -19,13 +19,13 @@
 </div>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Swarm-Squad/Swarm-Squad/refs/heads/main/src/swarm_squad/assets/screenshots/home.png" width="200" />
-  <img src="https://raw.githubusercontent.com/Swarm-Squad/Swarm-Squad/refs/heads/main/src/swarm_squad/assets/screenshots/map.png" width="200" />
+  <img src="https://raw.githubusercontent.com/Swarm-Squad/Swarm-Squad/refs/heads/main/src/swarm_squad/assets/screenshots/home.png" width="500" />
+  <img src="https://raw.githubusercontent.com/Swarm-Squad/Swarm-Squad/refs/heads/main/src/swarm_squad/assets/screenshots/nav.png" width="500" />
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Swarm-Squad/Swarm-Squad/refs/heads/main/src/swarm_squad/assets/screenshots/nav.png" width="200" />
-  <img src="https://raw.githubusercontent.com/Swarm-Squad/Swarm-Squad/refs/heads/main/src/swarm_squad/assets/screenshots/data.png" width="200" />
+  <img src="https://raw.githubusercontent.com/Swarm-Squad/Swarm-Squad/refs/heads/main/src/swarm_squad/assets/screenshots/map.png" width="500" />
+  <img src="https://raw.githubusercontent.com/Swarm-Squad/Swarm-Squad/refs/heads/main/src/swarm_squad/assets/screenshots/data.png" width="500" />
 </p>
 
 - **Agent Simulation:** Simulates multiple agents in a shared environment.
