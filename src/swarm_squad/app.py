@@ -4,8 +4,6 @@ Swarm Squad Application Entry Point.
 Handles command-line interface routing and application startup.
 """
 
-import atexit
-import signal
 import sys
 
 from swarm_squad.utils.logger import get_logger
@@ -44,17 +42,11 @@ def main():
         except Exception as e:
             logger.error(f"Error during final cleanup: {e}")
 
-    # Register cleanup with atexit
-    atexit.register(cleanup_resources)
-
     # Register signal handlers for graceful termination
     def signal_handler(sig, frame):
         logger.info(f"Signal {sig} received, performing cleanup...")
         cleanup_resources()
         sys.exit(0)
-
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
 
     try:
         # NOTE: create_app is implicitly called within cli.command for webui
@@ -82,8 +74,6 @@ def main():
 
     finally:
         logger.debug(f"Application exiting with code {exit_code}.")
-        # Perform cleanup explicitly before exiting
-        cleanup_resources()
 
     return exit_code
 

@@ -18,25 +18,16 @@
   <h2>✨ Key Features</h2>
 </div>
 
-1. **Agent Simulation:** Swarm Squad allows you to simulate the behavior of multiple agents in a controlled environment. This is essential for testing how agents interact with each other and their environment.
-
-2. **Scalability:** It should be able to handle a large number of agents simultaneously. This is important for testing the system's performance under various load conditions.
-
-3. **Behavior Specification:** Swarm Squad may include a way to define and specify the expected behavior of agents. This can be used to evaluate whether the agents are acting as intended.
-
-4. **Environment Modeling:** It provides tools for creating and managing the environment in which the agents operate. This could be a physical or virtual space with obstacles, goals, or other entities.
-
-5. **Metrics and Analytics:** The framework likely offers mechanisms for collecting and analyzing data on agent behavior. This could include metrics like speed, coordination, efficiency, or any other relevant performance indicators.
-
-6. **Customization and Extensibility:** It should allow users to customize and extend the framework to suit their specific needs. This might involve adding new types of agents, modifying the environment, or defining custom evaluation criteria.
-
-7. **Visualization and Reporting:** Swarm Squad may include tools for visualizing the simulation in real-time or for generating reports after a simulation run. This helps in understanding and communicating the results.
-
-8. **Integration with Other Tools:** It may have the capability to integrate with other software or libraries commonly used in multi-agent systems development, such as reinforcement learning libraries, communication protocols, or visualization tools.
-
-9. **Support for Various Types of Agents:** Swarm Squad should be versatile enough to support different types of agents, such as robots, drones, and autonomous vehicles.
-
-10. **Documentation and Support:** Proper documentation and support resources are essential for users to effectively utilize the framework.
+1. **Agent Simulation:** Simulates multiple agents in a shared environment.
+2. **Scalability:** Handles large-scale agent simulations efficiently.
+3. **Behavior Specs:** Define and test agent behavior against expected outcomes.
+4. **Environment Modeling:** Build and manage physical or virtual environments.
+5. **Analytics:** Collect metrics on speed, coordination, and performance.
+6. **Customizable:** Easily extend agents, environments, and evaluation logic.
+7. **Visualization:** Real-time views and post-run reports of simulations.
+8. **Tool Integration:** Connect with RL libraries, protocols, or visual tools.
+9. **Versatile Agents:** Supports robots, drones, and autonomous vehicles.
+10. **Docs & Support:** Includes clear documentation and helpful resources.
 
 ---
 
@@ -134,9 +125,7 @@ swarm-squad --help
 7. **Code Linting & Formatting:**
 
    ```bash
-   ruff check
    ruff check --fix
-   ruff check --select I
    ruff check --select I --fix
    ruff format
    ```
