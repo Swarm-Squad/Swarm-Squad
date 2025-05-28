@@ -1,6 +1,6 @@
 // First load p5.js from CDN
 document.write(
-  '<script src="https://cdn.jsdelivr.net/npm/p5@1.4.0/lib/p5.min.js"></script>'
+  '<script src="https://cdn.jsdelivr.net/npm/p5@1.4.0/lib/p5.min.js"></script>',
 );
 
 let boids = [];
@@ -52,7 +52,7 @@ class Boid {
         this.position.x,
         this.position.y,
         other.position.x,
-        other.position.y
+        other.position.y,
       );
       if (other != this && d < perceptionRadius) {
         steering.add(other.velocity);
@@ -77,7 +77,7 @@ class Boid {
         this.position.x,
         this.position.y,
         other.position.x,
-        other.position.y
+        other.position.y,
       );
       if (other != this && d < perceptionRadius) {
         let diff = p5.Vector.sub(this.position, other.position);

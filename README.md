@@ -1,6 +1,6 @@
 <div align="center">
    <a href="https://github.com/Sang-Buster/Swarm-Squad">
-      <img src="/src/swarm_squad//assets/favicon.png" width=20% alt="logo">
+      <img src="https://raw.githubusercontent.com/Swarm-Squad/Swarm-Squad/refs/heads/main/src/swarm_squad/assets/favicon.png" width=20% alt="logo">
    </a>   
    <h1>Swarm Squad</h1>
    <h5>A simulation framework for multi-agent systems.</h5>
@@ -44,11 +44,9 @@
   <h2>🚀 Getting Started</h2>
 </div>
 
-Get [uv](https://docs.astral.sh/uv/getting-started/installation/) and create a virtual environment.
+It is recommended to use [uv](https://docs.astral.sh/uv/getting-started/installation/) to create a virtual environment and install the following package.
 
 ```bash
-uv venv --python 3.10
-source .venv/bin/activate
 uv pip install swarm-squad
 ```
 
@@ -67,12 +65,14 @@ swarm-squad --help
 </div>
 
 1. **Clone the repository and navigate to project folder:**
+
    ```bash
    git clone https://github.com/Sang-Buster/Swarm-Squad
    cd Swarm-Squad
    ```
 
 2. **Install uv first:**
+
    ```bash
    # macOS/Linux
    curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -83,54 +83,56 @@ swarm-squad --help
    powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
    ```
 
-3. **Create a virtual environment at `Swarm-Squad/.venv/`:**
+3. **Install the required packages:**
+   **Option 1 (recommended):** Synchronizes environment with dependencies in pyproject.toml and uv.lock
+
    ```bash
-   uv venv --python 3.10
+   uv sync
+   source .venv/bin/activate # .venv\Scripts\activate for Windows
    ```
 
-4. **Activate the virtual environment:**
-   ```bash
-   # macOS/Linux
-   source .venv/bin/activate
-   ```
+   **Option 2 (manual):** Manual editable installation without referencing lockfile
 
-   ```powershell
-   # Windows
-   .venv\Scripts\activate
-   ```
-
-5. **Install the required packages:**
    ```bash
+   uv venv --python 3.10 # Create virtual environment
+   source .venv/bin/activate # .venv\Scripts\activate for Windows
    uv pip install -e .
    ```
 
-6. **Set up environment variables:**
+4. **Set up environment variables:**
+
    ```bash
    # Copy the example environment file
    cp .env.example .env
    ```
+
    - You can get a `MAPBOX_ACCESS_TOKEN` by signing up at https://www.mapbox.com/
    - Update the `OLLAMA_API_URL` if your Ollama instance is running on a different address
    - Update the `DATABASE_PATH` if you want to use a custom database file
 
-7. **Install ruff and pre-commit:**
+5. **Install ruff and pre-commit:**
+
    ```bash
    uv pip install ruff pre-commit
    ```
+
    - `ruff` is a super fast Python linter and formatter.
    - `pre-commit` helps maintain code quality by running automated checks before commits are made.
 
-8. **Install git hooks:**
+6. **Install git hooks:**
+
    ```bash
-   pre-commit install --hook-type commit-msg --hook-type pre-commit --hook-type pre-push
+   pre-commit install --install-hooks
    ```
 
    These hooks perform different checks at various stages:
+
    - `commit-msg`: Ensures commit messages follow the conventional format
    - `pre-commit`: Runs Ruff linting and formatting checks before each commit
    - `pre-push`: Performs final validation before pushing to remote
-  
-9. **Code Linting:**
+
+7. **Code Linting & Formatting:**
+
    ```bash
    ruff check
    ruff check --fix
@@ -139,7 +141,7 @@ swarm-squad --help
    ruff format
    ```
 
-10. **Run the application:**
+8. **Run the application:**
    ```bash
    uv run src/swarm_squad/app.py
    ```
@@ -153,7 +155,7 @@ swarm-squad --help
 ```text
 📂Swarm Squad
  ┣ 📂src                         // Source Code
- ┃ ┗ 📦swarm_squad                  // 
+ ┃ ┗ 📦swarm_squad                  //
  ┃ ┃ ┣ 📂assets                     // Static assets (CSS, images, favicon, etc.)
  ┃ ┃ ┃ ┣ 📂css                      // CSS files
  ┃ ┃ ┃ ┣ 📂js                       // JavaScript files
@@ -172,7 +174,6 @@ swarm-squad --help
  ┣ 📄.env.example                // Template for environment variables
  ┣ 📄.gitignore                  // Git ignore patterns (env, cache, database)
  ┣ 📄.pre-commit-config.yaml     // Pre-commit hooks (ruff, commit message)
- ┣ 📄.pre-commit_msg_template.py // Commit message format validator
  ┣ 📄.python-version             // Python version
  ┣ 📄LICENSE                     // MIT License
  ┣ 📄README.md                   // Project documentation

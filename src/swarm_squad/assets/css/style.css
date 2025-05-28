@@ -1,209 +1,233 @@
 /* Base dark background */
 body {
-    background: #000000;
-    margin: 0;
-    min-height: 100vh;
-    overflow-x: hidden;
+  background: #000000;
+  margin: 0;
+  min-height: 100vh;
+  overflow-x: hidden;
 }
 
 /* Background canvas */
 canvas {
-    position: fixed;
-    top: 0;
-    left: 0;
-    z-index: -1;
-    /* Ensure it stays in the background */
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  /* Ensure it stays in the background */
 }
 
 /* Multiple illumination layers */
 .illumination-1,
 .illumination-2,
 .illumination-3 {
-    position: fixed;
-    border-radius: 50%;
-    filter: blur(150px);
-    opacity: 0.9;
-    pointer-events: none;
-    z-index: 0;
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(150px);
+  opacity: 0.9;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .illumination-1 {
-    top: 20%;
-    left: 10%;
-    width: 600px;
-    height: 600px;
-    background: radial-gradient(circle, rgba(29, 80, 129, 0.5) 0%, transparent 70%);
-    animation: float-1 25s ease-in-out infinite;
+  top: 20%;
+  left: 10%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(
+    circle,
+    rgba(29, 80, 129, 0.5) 0%,
+    transparent 70%
+  );
+  animation: float-1 25s ease-in-out infinite;
 }
 
 .illumination-2 {
-    top: 40%;
-    left: 15%;
-    width: 550px;
-    height: 550px;
-    background: radial-gradient(circle, rgba(29, 80, 129, 0.5) 0%, transparent 70%);
-    animation: float-2 30s ease-in-out infinite;
+  top: 40%;
+  left: 15%;
+  width: 550px;
+  height: 550px;
+  background: radial-gradient(
+    circle,
+    rgba(29, 80, 129, 0.5) 0%,
+    transparent 70%
+  );
+  animation: float-2 30s ease-in-out infinite;
 }
 
 .illumination-3 {
-    top: 30%;
-    left: 20%;
-    width: 575px;
-    height: 575px;
-    background: radial-gradient(circle, rgba(29, 80, 129, 0.5) 0%, transparent 70%);
-    animation: float-3 28s ease-in-out infinite;
+  top: 30%;
+  left: 20%;
+  width: 575px;
+  height: 575px;
+  background: radial-gradient(
+    circle,
+    rgba(29, 80, 129, 0.5) 0%,
+    transparent 70%
+  );
+  animation: float-3 28s ease-in-out infinite;
 }
 
 .illumination-4 {
-    position: fixed;
-    border-radius: 50%;
-    filter: blur(150px);
-    opacity: 0.9;
-    pointer-events: none;
-    z-index: 0;
-    top: 50%;
-    left: 30%;
-    width: 600px;
-    height: 600px;
-    background: radial-gradient(circle, rgba(29, 80, 129, 0.5) 0%, transparent 70%);
-    animation: float-4 120s ease-in-out infinite;
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(150px);
+  opacity: 0.9;
+  pointer-events: none;
+  z-index: 0;
+  top: 50%;
+  left: 30%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(
+    circle,
+    rgba(29, 80, 129, 0.5) 0%,
+    transparent 70%
+  );
+  animation: float-4 120s ease-in-out infinite;
 }
 
 .illumination-5 {
-    position: fixed;
-    border-radius: 50%;
-    filter: blur(150px);
-    opacity: 0.9;
-    pointer-events: none;
-    z-index: 0;
-    top: 20%;
-    right: 30%;
-    width: 600px;
-    height: 600px;
-    background: radial-gradient(circle, rgba(29, 80, 129, 0.5) 0%, transparent 70%);
-    animation: float-5 120s ease-in-out infinite;
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(150px);
+  opacity: 0.9;
+  pointer-events: none;
+  z-index: 0;
+  top: 20%;
+  right: 30%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(
+    circle,
+    rgba(29, 80, 129, 0.5) 0%,
+    transparent 70%
+  );
+  animation: float-5 120s ease-in-out infinite;
 }
 
 /* Animations constrained to middle-left panel */
 @keyframes float-1 {
-    0% {
-        transform: translate(0, 0);
-    }
+  0% {
+    transform: translate(0, 0);
+  }
 
-    25% {
-        transform: translate(20vw, 10vh);
-    }
+  25% {
+    transform: translate(20vw, 10vh);
+  }
 
-    50% {
-        transform: translate(25vw, -5vh);
-    }
+  50% {
+    transform: translate(25vw, -5vh);
+  }
 
-    75% {
-        transform: translate(15vw, 15vh);
-    }
+  75% {
+    transform: translate(15vw, 15vh);
+  }
 
-    100% {
-        transform: translate(0, 0);
-    }
+  100% {
+    transform: translate(0, 0);
+  }
 }
 
 @keyframes float-2 {
-    0% {
-        transform: translate(0, 0);
-    }
+  0% {
+    transform: translate(0, 0);
+  }
 
-    25% {
-        transform: translate(15vw, -10vh);
-    }
+  25% {
+    transform: translate(15vw, -10vh);
+  }
 
-    50% {
-        transform: translate(20vw, 10vh);
-    }
+  50% {
+    transform: translate(20vw, 10vh);
+  }
 
-    75% {
-        transform: translate(10vw, -15vh);
-    }
+  75% {
+    transform: translate(10vw, -15vh);
+  }
 
-    100% {
-        transform: translate(0, 0);
-    }
+  100% {
+    transform: translate(0, 0);
+  }
 }
 
 @keyframes float-3 {
-    0% {
-        transform: translate(0, 0);
-    }
+  0% {
+    transform: translate(0, 0);
+  }
 
-    25% {
-        transform: translate(-10vw, 15vh);
-    }
+  25% {
+    transform: translate(-10vw, 15vh);
+  }
 
-    50% {
-        transform: translate(15vw, -10vh);
-    }
+  50% {
+    transform: translate(15vw, -10vh);
+  }
 
-    75% {
-        transform: translate(-5vw, -5vh);
-    }
+  75% {
+    transform: translate(-5vw, -5vh);
+  }
 
-    100% {
-        transform: translate(0, 0);
-    }
+  100% {
+    transform: translate(0, 0);
+  }
 }
 
 @keyframes float-4 {
-    0% {
-        transform: translate(-50vw, -30vh);
-    }
+  0% {
+    transform: translate(-50vw, -30vh);
+  }
 
-    25% {
-        transform: translate(50vw, 30vh);
-    }
+  25% {
+    transform: translate(50vw, 30vh);
+  }
 
-    50% {
-        transform: translate(-30vw, 40vh);
-    }
+  50% {
+    transform: translate(-30vw, 40vh);
+  }
 
-    75% {
-        transform: translate(40vw, -40vh);
-    }
+  75% {
+    transform: translate(40vw, -40vh);
+  }
 
-    100% {
-        transform: translate(-50vw, -30vh);
-    }
+  100% {
+    transform: translate(-50vw, -30vh);
+  }
 }
 
 @keyframes float-5 {
-    0% {
-        transform: translate(50vw, 30vh);
-    }
+  0% {
+    transform: translate(50vw, 30vh);
+  }
 
-    25% {
-        transform: translate(-40vw, -40vh);
-    }
+  25% {
+    transform: translate(-40vw, -40vh);
+  }
 
-    50% {
-        transform: translate(30vw, -30vh);
-    }
+  50% {
+    transform: translate(30vw, -30vh);
+  }
 
-    75% {
-        transform: translate(-50vw, 40vh);
-    }
+  75% {
+    transform: translate(-50vw, 40vh);
+  }
 
-    100% {
-        transform: translate(50vw, 30vh);
-    }
+  100% {
+    transform: translate(50vw, 30vh);
+  }
 }
 
 /* Stars effect */
 .stars {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    background: radial-gradient(circle at 50% 50%, rgba(184, 184, 184, 0.03) 1px, transparent 1px);
-    background-size: 50px 50px;
-    z-index: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(184, 184, 184, 0.03) 1px,
+    transparent 1px
+  );
+  background-size: 50px 50px;
+  z-index: 0;
 }

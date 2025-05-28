@@ -1,40 +1,49 @@
+default_install_hook_types: [pre-commit, pre-push, commit-msg]
+
 repos:
-- repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v5.0.0
-  hooks:
-    - id: end-of-file-fixer
-      name: 'end-of-file-fixer'
-      pass_filenames: false
-      always_run: true
-    - id: trailing-whitespace
-      name: 'trailing-whitespace'
-      pass_filenames: false
-      always_run: true
-    - id: fix-byte-order-marker
-      name: 'fix-byte-order-marker'
-      pass_filenames: false
-      always_run: true
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+        name: 'end-of-file-fixer'
+        pass_filenames: false
+        always_run: true
+      - id: trailing-whitespace
+        name: 'trailing-whitespace'
+        pass_filenames: false
+        always_run: true
+      - id: fix-byte-order-marker
+        name: 'fix-byte-order-marker'
+        pass_filenames: false
+        always_run: true
 
-- repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: 'v0.11.0'
-  hooks:
-    - id: ruff
-      args: [--fix]
-      name: ruff (check and fix)
-      always_run: true
-    - id: ruff
-      args: [--select=I, --fix]
-      name: ruff (import sorting)
-      always_run: true
-    - id: ruff-format
-      name: ruff (format)
-      always_run: true
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: 'v0.11.11'
+    hooks:
+      - id: ruff
+        args: [--fix]
+        name: ruff (check and fix)
+        always_run: true
+      - id: ruff
+        args: [--select=I, --fix]
+        name: ruff (import sorting)
+        always_run: true
+      - id: ruff-format
+        name: ruff (format)
+        always_run: true
 
-- repo: local
-  hooks:
-    - id: commit-msg-template
-      name: Check commit message format
-      entry: python .pre-commit_msg_template.py
-      language: python
-      stages: [commit-msg]
-      always_run: true
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: "v4.0.0-alpha.8"
+    hooks:
+      - id: prettier
+        additional_dependencies: [prettier@3.5.3]
+        files: \.(js|jsx|ts|tsx|yml|toml|json|html|css|scss|md|mdx)$
+    always_run: true
+
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.2.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args: [--verbose]
+    always_run: true

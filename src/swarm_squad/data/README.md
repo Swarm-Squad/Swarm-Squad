@@ -7,6 +7,7 @@ This guide explains how to interact with the Swarm-Squad database and WebSocket 
 The system uses SQLite with four main tables:
 
 ### 1. Agent Table
+
 ```
 agent_columns = [
     "Agent Name",     # int: Unique identifier (1, 2, 3, ...)
@@ -18,6 +19,7 @@ agent_columns = [
 ```
 
 ### 2. Mission Table
+
 ```
 mission_columns = [
     "Agent Name",     # int: Unique identifier (1, 2, 3, ...)
@@ -29,6 +31,7 @@ mission_columns = [
 ```
 
 ### 3. System Table
+
 ```
 system_health_columns = [
     "Agent Name",                 # int: Unique identifier (1, 2, 3, ...)
@@ -40,6 +43,7 @@ system_health_columns = [
 ```
 
 ### 4. Telemetry Table
+
 ```
 telemetry_columns = [
     "Agent Name",          # int: Unique identifier (1, 2, 3, ...)
@@ -58,6 +62,7 @@ telemetry_columns = [
 ## Writing Data
 
 ### Method 1: Using Database Writers
+
 ```python
 from utils.db_writer import agent_tbl_writer, mission_tbl_writer, system_tbl_writer, telemetry_tbl_writer
 import pandas as pd
@@ -78,6 +83,7 @@ system_tbl_writer(df)     # For system data
 ```
 
 ### Method 2: Using WebSocket Writer
+
 ```python
 from utils.websocket_writer import ws_writer
 
@@ -139,5 +145,6 @@ ws_writer(data)
 ## Example Scripts
 
 Check these example scripts for implementation details:
+
 - `src/scripts/boids.py`: Flocking simulation
 - `src/scripts/formation.py`: Formation control
