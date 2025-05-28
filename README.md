@@ -18,16 +18,26 @@
   <h2>✨ Key Features</h2>
 </div>
 
-1. **Agent Simulation:** Simulates multiple agents in a shared environment.
-2. **Scalability:** Handles large-scale agent simulations efficiently.
-3. **Behavior Specs:** Define and test agent behavior against expected outcomes.
-4. **Environment Modeling:** Build and manage physical or virtual environments.
-5. **Analytics:** Collect metrics on speed, coordination, and performance.
-6. **Customizable:** Easily extend agents, environments, and evaluation logic.
-7. **Visualization:** Real-time views and post-run reports of simulations.
-8. **Tool Integration:** Connect with RL libraries, protocols, or visual tools.
-9. **Versatile Agents:** Supports robots, drones, and autonomous vehicles.
-10. **Docs & Support:** Includes clear documentation and helpful resources.
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Swarm-Squad/Swarm-Squad/refs/heads/main/src/swarm_squad/assets/screenshots/home.png" width="200" />
+  <img src="https://raw.githubusercontent.com/Swarm-Squad/Swarm-Squad/refs/heads/main/src/swarm_squad/assets/screenshots/map.png" width="200" />
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Swarm-Squad/Swarm-Squad/refs/heads/main/src/swarm_squad/assets/screenshots/nav.png" width="200" />
+  <img src="https://raw.githubusercontent.com/Swarm-Squad/Swarm-Squad/refs/heads/main/src/swarm_squad/assets/screenshots/data.png" width="200" />
+</p>
+
+- **Agent Simulation:** Simulates multiple agents in a shared environment.
+- **Scalability:** Handles large-scale agent simulations efficiently.
+- **Behavior Specs:** Define and test agent behavior against expected outcomes.
+- **Environment Modeling:** Build and manage physical or virtual environments.
+- **Analytics:** Collect metrics on speed, coordination, and performance.
+- **Customizable:** Easily extend agents, environments, and evaluation logic.
+- **Visualization:** Real-time views and post-run reports of simulations.
+- **Tool Integration:** Connect with RL libraries, protocols, or visual tools.
+- **Versatile Agents:** Supports robots, drones, and autonomous vehicles.
+- **Docs & Support:** Includes clear documentation and helpful resources.
 
 ---
 
