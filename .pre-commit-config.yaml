@@ -38,7 +38,7 @@ repos:
       - id: prettier
         additional_dependencies: [prettier@3.5.3]
         files: \.(js|jsx|ts|tsx|yml|toml|json|html|css|scss|md|mdx)$
-    always_run: true
+        always_run: true
 
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v4.2.0
@@ -46,4 +46,4 @@ repos:
       - id: conventional-pre-commit
         stages: [commit-msg]
         args: [--verbose]
-    always_run: true
+        always_run: true

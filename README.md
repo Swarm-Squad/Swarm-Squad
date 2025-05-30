@@ -4,11 +4,14 @@
    </a>   
    <h1>Swarm Squad</h1>
    <h5>A simulation framework for multi-agent systems.</h5>
-   <a href="https://swarm-squad.vercel.app/">
+   <a href="https://swarm-squad.com/">
    <img src="https://img.shields.io/badge/Web-282c34?style=for-the-badge&logoColor=white" />
    </a> &nbsp;&nbsp;
-   <a href="https://swarm-squad-doc.vercel.app/">
+   <a href="https://docs.swarm-squad.com/">
    <img src="https://img.shields.io/badge/Doc-282c34?style=for-the-badge&logoColor=white" />
+   </a>
+   <a href="https://docs.swarm-squad.com/gallery/">
+   <img src="https://img.shields.io/badge/Demo-282c34?style=for-the-badge&logoColor=white" />
    </a>
 </div>
 
@@ -18,15 +21,16 @@
   <h2>✨ Key Features</h2>
 </div>
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Swarm-Squad/Swarm-Squad/refs/heads/main/src/swarm_squad/assets/screenshots/home.png" width="500" />
-  <img src="https://raw.githubusercontent.com/Swarm-Squad/Swarm-Squad/refs/heads/main/src/swarm_squad/assets/screenshots/nav.png" width="500" />
-</p>
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Swarm-Squad/Swarm-Squad/refs/heads/main/src/swarm_squad/assets/screenshots/map.png" width="500" />
-  <img src="https://raw.githubusercontent.com/Swarm-Squad/Swarm-Squad/refs/heads/main/src/swarm_squad/assets/screenshots/data.png" width="500" />
-</p>
+<table align="center">
+  <tr>
+    <td><img src="https://raw.githubusercontent.com/Swarm-Squad/Swarm-Squad/refs/heads/main/src/swarm_squad/assets/screenshots/home.png" /></td>
+    <td><img src="https://raw.githubusercontent.com/Swarm-Squad/Swarm-Squad/refs/heads/main/src/swarm_squad/assets/screenshots/nav.png" /></td>
+  </tr>
+  <tr>
+    <td><img src="https://raw.githubusercontent.com/Swarm-Squad/Swarm-Squad/refs/heads/main/src/swarm_squad/assets/screenshots/map.png" /></td>
+    <td><img src="https://raw.githubusercontent.com/Swarm-Squad/Swarm-Squad/refs/heads/main/src/swarm_squad/assets/screenshots/data.png" /></td>
+  </tr>
+</table>
 
 - **Agent Simulation:** Simulates multiple agents in a shared environment.
 - **Scalability:** Handles large-scale agent simulations efficiently.
