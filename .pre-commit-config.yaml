@@ -28,7 +28,7 @@ repos:
         args: [--select=I, --fix]
         name: ruff (import sorting)
         always_run: true
-      - id: ruff-format
+      - id: ruff
         name: ruff (format)
         always_run: true
 
