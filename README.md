@@ -4,15 +4,17 @@
    </a>   
    <h1>Swarm Squad</h1>
    <h5>A simulation framework for multi-agent systems.</h5>
+   <p align="center">
    <a href="https://swarm-squad.com/">
-   <img src="https://img.shields.io/badge/Web-282c34?style=for-the-badge&logoColor=white" />
-   </a> &nbsp;&nbsp;
+      <img src="https://img.shields.io/badge/Web-282c34?style=for-the-badge&logoColor=white" />
+   </a>&nbsp;&nbsp;
    <a href="https://docs.swarm-squad.com/">
-   <img src="https://img.shields.io/badge/Doc-282c34?style=for-the-badge&logoColor=white" />
-   </a>
+      <img src="https://img.shields.io/badge/Doc-282c34?style=for-the-badge&logoColor=white" />
+   </a>&nbsp;&nbsp;
    <a href="https://docs.swarm-squad.com/gallery/">
-   <img src="https://img.shields.io/badge/Demo-282c34?style=for-the-badge&logoColor=white" />
+      <img src="https://img.shields.io/badge/Demo-282c34?style=for-the-badge&logoColor=white" />
    </a>
+   </p>
 </div>
 
 ---
@@ -32,16 +34,15 @@
   </tr>
 </table>
 
-- **Agent Simulation:** Simulates multiple agents in a shared environment.
-- **Scalability:** Handles large-scale agent simulations efficiently.
-- **Behavior Specs:** Define and test agent behavior against expected outcomes.
-- **Environment Modeling:** Build and manage physical or virtual environments.
-- **Analytics:** Collect metrics on speed, coordination, and performance.
-- **Customizable:** Easily extend agents, environments, and evaluation logic.
-- **Visualization:** Real-time views and post-run reports of simulations.
-- **Tool Integration:** Connect with RL libraries, protocols, or visual tools.
-- **Versatile Agents:** Supports robots, drones, and autonomous vehicles.
-- **Docs & Support:** Includes clear documentation and helpful resources.
+- 🤖 **Agent Simulation:** Simulates multiple agents in a shared environment.
+- 📈 **Scalability:** Handles large-scale agent simulations efficiently.
+- ✅ **Behavior Specs:** Define and test agent behavior against expected outcomes.
+- 🌍 **Environment Modeling:** Build and manage physical or virtual environments.
+- 📊 **Analytics:** Collect metrics on speed, coordination, and performance.
+- ⚙️ **Customizable:** Easily extend agents, environments, and evaluation logic.
+- 🗺️ **Visualization:** Real-time views and post-run reports of simulations.
+- 🧰 **Tool Integration:** Connect with RL libraries, protocols, or visual tools.
+- 🚘 **Versatile Agents:** Supports robots, drones, and autonomous vehicles.
 
 ---
 
