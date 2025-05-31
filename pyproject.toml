@@ -25,7 +25,7 @@ Documentation = "https://docs.swarm-squad.com"
 Repository = "https://github.com/Swarm-Squad/Swarm-Squad"
 
 [project.scripts]
-swarm-squad = "swarm_squad.app:main"  # Changed from app to main
+swarm-squad = "swarm_squad.app:main"  # GUI entry point
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/swarm_squad"]
