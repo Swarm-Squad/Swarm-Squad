@@ -8,10 +8,10 @@
    <a href="https://swarm-squad.com/">
       <img src="https://img.shields.io/badge/Web-282c34?style=for-the-badge&logoColor=white" />
    </a>&nbsp;&nbsp;
-   <a href="https://docs.swarm-squad.com/">
+   <a href="https://swarm-squad.com/docs">
       <img src="https://img.shields.io/badge/Doc-282c34?style=for-the-badge&logoColor=white" />
    </a>&nbsp;&nbsp;
-   <a href="https://docs.swarm-squad.com/gallery/">
+   <a href="https://swarm-squad.com/docs/gallery/#swarm-squad">
       <img src="https://img.shields.io/badge/Demo-282c34?style=for-the-badge&logoColor=white" />
    </a>
    </p>
