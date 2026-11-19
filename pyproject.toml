@@ -5,9 +5,11 @@ description = "Swarm Squad: A simulation framework for multi-agent systems."
 authors = [{ name = "Sang Buster", email = "hello@singsongaftermath.com" }]
 readme = "README.md"
 license = {file = "LICENSE"}
-requires-python = ">=3.10"
+# Pillow 13 and filelock 4.2 (the releases that clear the open advisories)
+# do not publish Python 3.10 wheels.
+requires-python = ">=3.11"
 dependencies = [
-    "dash>=3.0.2",
+    "dash>=4.4.0",
     "dash-bootstrap-components>=2.0.0",
     "dash-iconify>=0.1.2",
     "dash-mantine-components>=1.1.1",
@@ -38,4 +40,22 @@ build-backend = "hatchling.build"
 dev = [
     "ruff>=0.11.0",
     "pre-commit>=4.0.0",
+]
+
+# Floors for transitive packages flagged by Dependabot. These only apply when
+# the package is actually resolved; they keep a later `uv lock` from moving
+# back onto a vulnerable release.
+[tool.uv]
+constraint-dependencies = [
+    "anyio>=4.14.2",
+    "certifi>=2026.10.18",
+    "cryptography>=50",
+    "filelock>=4.2.1",
+    "mcp>=1.30.0",
+    "pillow>=13",
+    "pyjwt>=2.15.0",
+    "setuptools>=84.1.0",
+    "urllib3>=2.8.0",
+    "virtualenv>=21.14.9",
+    "werkzeug>=3.1.9",
 ]

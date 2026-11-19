@@ -100,7 +100,7 @@ swarm-squad --help
    **Option 2 (manual):** Manual editable installation without referencing lockfile
 
    ```bash
-   uv venv --python 3.10 # Create virtual environment
+   uv venv --python 3.11 # Create virtual environment
    source .venv/bin/activate # .venv\Scripts\activate for Windows
    uv pip install -e .
    ```
